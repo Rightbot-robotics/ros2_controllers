@@ -116,6 +116,9 @@ public:
 protected:
   // To reduce number of variables and to make the code shorter the interfaces are ordered in types
   // as the following constants
+
+  std::vector<double> max_velocities_;
+
   const std::vector<std::string> allowed_interface_types_ = {
     hardware_interface::HW_IF_POSITION,
     hardware_interface::HW_IF_VELOCITY,
@@ -260,6 +263,10 @@ private:
 
   void resize_joint_trajectory_point(
     trajectory_msgs::msg::JointTrajectoryPoint & point, size_t size);
+
+  void get_max_velocities(
+    std::shared_ptr<trajectory_msgs::msg::JointTrajectory> trajectory_msg);
+
 };
 
 }  // namespace joint_trajectory_controller

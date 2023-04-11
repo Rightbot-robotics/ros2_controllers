@@ -114,6 +114,8 @@ JointTrajectoryController::state_interface_configuration() const
 controller_interface::return_type JointTrajectoryController::update(
   const rclcpp::Time & time, const rclcpp::Duration & period)
 {
+  // RCLCPP_INFO(get_node()->get_logger(), "update");
+
   if (get_state().id() == lifecycle_msgs::msg::State::PRIMARY_STATE_INACTIVE)
   {
     return controller_interface::return_type::OK;
@@ -123,7 +125,7 @@ controller_interface::return_type JointTrajectoryController::update(
                                    JointTrajectoryPoint & error, int index,
                                    const JointTrajectoryPoint & current,
                                    const JointTrajectoryPoint & desired)
-  {
+  {  
     // error defined as the difference between current and desired
     error.positions[index] =
       angles::shortest_angular_distance(current.positions[index], desired.positions[index]);
@@ -142,10 +144,12 @@ controller_interface::return_type JointTrajectoryController::update(
   auto new_external_msg = traj_msg_external_point_ptr_.readFromRT();
   if (current_external_msg != *new_external_msg)
   {
+    RCLCPP_INFO(get_node()->get_logger(), "fill partial goal");
     fill_partial_goal(*new_external_msg);
     sort_to_local_joint_order(*new_external_msg);
     // TODO(denis): Add here integration of position and velocity
     traj_external_point_ptr_->update(*new_external_msg);
+    get_max_velocities(*new_external_msg);
   }
 
   // TODO(anyone): can I here also use const on joint_interface since the reference_wrapper is not
@@ -166,6 +170,7 @@ controller_interface::return_type JointTrajectoryController::update(
   // currently carrying out a trajectory
   if (traj_point_active_ptr_ && (*traj_point_active_ptr_)->has_trajectory_msg())
   {
+    // RCLCPP_INFO(get_node()->get_logger(), "carrying out trajectory");
     bool first_sample = false;
     // if sampling the first time, set the point before you sample
     if (!(*traj_point_active_ptr_)->is_sampled_already())
@@ -187,8 +192,11 @@ controller_interface::return_type JointTrajectoryController::update(
       (*traj_point_active_ptr_)
         ->sample(time, interpolation_method_, state_desired_, start_segment_itr, end_segment_itr);
 
+    // RCLCPP_INFO(get_node()->get_logger(), "checking valid point");
+
     if (valid_point)
     {
+      // RCLCPP_INFO(get_node()->get_logger(), "valid point");
       bool tolerance_violated_while_moving = false;
       bool outside_goal_tolerance = false;
       bool within_goal_time = true;
@@ -262,11 +270,21 @@ controller_interface::return_type JointTrajectoryController::update(
           }
           else
           {
-            assign_interface_from_point(joint_command_interface_[1], state_desired_.velocities);
+            auto state_desired_w_max_velocity = state_desired_;
+            state_desired_w_max_velocity.velocities = max_velocities_;
+
+            for (const auto & p : max_velocities_)
+            {
+              
+              // RCLCPP_INFO(get_node()->get_logger(), "desired velocity %f", p);
+            }
+
+            assign_interface_from_point(joint_command_interface_[1], state_desired_w_max_velocity.velocities);
           }
         }
         if (has_acceleration_command_interface_)
         {
+          // RCLCPP_INFO(get_node()->get_logger(), "desired accelerations %f", state_desired_.accelerations[0]);
           assign_interface_from_point(joint_command_interface_[2], state_desired_.accelerations);
         }
         if (has_effort_command_interface_)
@@ -288,6 +306,7 @@ controller_interface::return_type JointTrajectoryController::update(
       const auto active_goal = *rt_active_goal_.readFromRT();
       if (active_goal)
       {
+        RCLCPP_INFO(get_node()->get_logger(), "active goal");
         // send feedback
         auto feedback = std::make_shared<FollowJTrajAction::Feedback>();
         feedback->header.stamp = time;
@@ -656,7 +675,7 @@ controller_interface::CallbackReturn JointTrajectoryController::on_configure(
 
   joint_command_subscriber_ =
     get_node()->create_subscription<trajectory_msgs::msg::JointTrajectory>(
-      "~/joint_trajectory", rclcpp::SystemDefaultsQoS(),
+      "trajectory", rclcpp::SystemDefaultsQoS(),
       std::bind(&JointTrajectoryController::topic_callback, this, std::placeholders::_1));
 
   // State publisher
@@ -799,6 +818,8 @@ controller_interface::CallbackReturn JointTrajectoryController::on_activate(
 controller_interface::CallbackReturn JointTrajectoryController::on_deactivate(
   const rclcpp_lifecycle::State &)
 {
+  RCLCPP_ERROR(
+      get_node()->get_logger(), "Joint Trajectory controller on deactivate");
   // TODO(anyone): How to halt when using effort commands?
   for (size_t index = 0; index < dof_; ++index)
   {
@@ -835,6 +856,8 @@ controller_interface::CallbackReturn JointTrajectoryController::on_cleanup(
   const rclcpp_lifecycle::State &)
 {
   // go home
+  RCLCPP_ERROR(
+      get_node()->get_logger(), "Joint Trajectory controller on cleanup");
   if (traj_home_point_ptr_ != nullptr)
   {
     traj_home_point_ptr_->update(traj_msg_home_ptr_);
@@ -856,6 +879,8 @@ controller_interface::CallbackReturn JointTrajectoryController::on_error(
 
 bool JointTrajectoryController::reset()
 {
+  RCLCPP_ERROR(
+      get_node()->get_logger(), "Joint Trajectory controller reset");
   subscriber_is_active_ = false;
   joint_command_subscriber_.reset();
 
@@ -926,14 +951,18 @@ void JointTrajectoryController::publish_state(
 void JointTrajectoryController::topic_callback(
   const std::shared_ptr<trajectory_msgs::msg::JointTrajectory> msg)
 {
+  RCLCPP_INFO(get_node()->get_logger(), "Received new topic");
+
   if (!validate_trajectory_msg(*msg))
   {
+    RCLCPP_INFO(get_node()->get_logger(), "Invalid trajectory msg");
     return;
   }
   // http://wiki.ros.org/joint_trajectory_controller/UnderstandingTrajectoryReplacement
   // always replace old msg with new one for now
   if (subscriber_is_active_)
   {
+    RCLCPP_INFO(get_node()->get_logger(), "Adding new trajectory msg");
     add_new_trajectory_msg(msg);
   }
 };
@@ -1142,6 +1171,7 @@ bool JointTrajectoryController::validate_trajectory_msg(
   {
     if (trajectory.joint_names.size() != dof_)
     {
+      RCLCPP_INFO(get_node()->get_logger(), "incoming_joint_names  %d available dof %d",trajectory.joint_names.size(),dof_);
       RCLCPP_ERROR(
         get_node()->get_logger(),
         "Joints on incoming trajectory don't match the controller joints.");
@@ -1180,6 +1210,10 @@ bool JointTrajectoryController::validate_trajectory_msg(
   {
     const std::string & incoming_joint_name = trajectory.joint_names[i];
 
+    RCLCPP_INFO(get_node()->get_logger(), "incoming_joint_name %s", incoming_joint_name.c_str());
+    RCLCPP_INFO(get_node()->get_logger(), "available joint_names %s", trajectory.joint_names[i].c_str());
+
+
     auto it = std::find(params_.joints.begin(), params_.joints.end(), incoming_joint_name);
     if (it == params_.joints.end())
     {
@@ -1189,6 +1223,39 @@ bool JointTrajectoryController::validate_trajectory_msg(
       return false;
     }
   }
+
+  // // finding max velocity for all joints
+  // std::vector<double> max_velocities;
+  // std::unordered_map<std::string, double> max_velocities_map;
+
+  // max_velocities.resize(7);
+
+  // // max_velocities_.resize(7);
+  // for (size_t i = 0; i < trajectory.joint_names.size(); ++i)
+  // {
+  //   const std::string & incoming_joint_name = trajectory.joint_names[i];
+  //   std::vector<double> velocities;
+  //   velocities.resize(trajectory.points.size());
+  //   for (const auto & p : trajectory.points)
+  //   {
+  //     // RCLCPP_INFO(get_node()->get_logger(), "velocites %f", p.velocities[i]);
+  //     velocities.push_back(abs(p.velocities[i]));
+  //   }
+  //   auto maxElement = std::max_element(velocities.begin(), velocities.end());
+  //   RCLCPP_INFO(get_node()->get_logger(), "MAX VELOCITY IS %s is %f",incoming_joint_name.c_str(),*maxElement );
+
+  //   max_velocities_map[incoming_joint_name] = *maxElement;
+  // }
+  // // max_velocities_ = max_velocities;
+
+  // for(const auto & p : params_.joints){
+  //   max_velocities.push_back(max_velocities_map[p]);
+  //   RCLCPP_INFO(get_node()->get_logger(), "sequenced MAX VELOCITY IS %s is %f",p.c_str(),max_velocities_map[p] );
+  // }
+
+
+
+
 
   rclcpp::Duration previous_traj_time(0ms);
   for (size_t i = 0; i < trajectory.points.size(); ++i)
@@ -1288,6 +1355,42 @@ void JointTrajectoryController::resize_joint_trajectory_point(
     point.accelerations.resize(size, 0.0);
   }
 }
+
+void JointTrajectoryController::get_max_velocities(
+  std::shared_ptr<trajectory_msgs::msg::JointTrajectory> trajectory_msg)
+{
+  std::unordered_map<std::string, double> max_velocities_map;
+
+  for (size_t i = 0; i < params_.joints.size(); ++i)
+  {
+    const std::string & incoming_joint_name = params_.joints[i];
+    std::vector<double> velocities;
+
+    // velocities.resize(trajectory_msg->points.size());
+    // RCLCPP_INFO(get_node()->get_logger(), "VELOCITY0 of %s is %f",incoming_joint_name.c_str(), trajectory_msg->points[0].velocities[i] );
+    // RCLCPP_INFO(get_node()->get_logger(), "VELOCITY1 of %s is %f",incoming_joint_name.c_str(), trajectory_msg->points[1].velocities[i] );
+    // RCLCPP_INFO(get_node()->get_logger(), "VELOCITY2 of %s is %f",incoming_joint_name.c_str(), trajectory_msg->points[2].velocities[i] );
+
+    for (const auto & p : trajectory_msg->points)
+    {
+      velocities.push_back(abs(p.velocities[i]));
+      RCLCPP_INFO(get_node()->get_logger(), "VELOCITY of %s is %f",incoming_joint_name.c_str(), p.velocities[i] );
+
+    }
+    auto maxElement = std::max_element(velocities.begin(), velocities.end());
+
+    // max_velocities_map[incoming_joint_name] = *maxElement;
+    max_velocities_.push_back( *maxElement);
+
+    RCLCPP_INFO(get_node()->get_logger(), "MAX VELOCITY IS %s is %f",incoming_joint_name.c_str(), *maxElement );
+
+  }
+
+  // for(const auto & p : params_.joints){
+  //   max_velocities_.push_back(max_velocities_map[p]);
+  //   RCLCPP_INFO(get_node()->get_logger(), "sequenced MAX VELOCITY IS %s is %f",p.c_str(),max_velocities_map[p] );
+  // }
+}  
 
 }  // namespace joint_trajectory_controller
 
