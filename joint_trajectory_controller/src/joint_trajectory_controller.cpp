@@ -190,7 +190,7 @@ controller_interface::return_type JointTrajectoryController::update(
     TrajectoryPointConstIter start_segment_itr, end_segment_itr;
     const bool valid_point =
       (*traj_point_active_ptr_)
-        ->sample(time, interpolation_method_, state_desired_, start_segment_itr, end_segment_itr);
+        ->sample_test(time, interpolation_method_, state_desired_, state_desired_parsed_, start_segment_itr, end_segment_itr);
 
     // RCLCPP_INFO(get_node()->get_logger(), "checking valid point");
 
@@ -260,7 +260,19 @@ controller_interface::return_type JointTrajectoryController::update(
         // set values for next hardware write()
         if (has_position_command_interface_)
         {
-          assign_interface_from_point(joint_command_interface_[0], state_desired_.positions);
+          auto state_desired_w_pos = state_desired_;
+          
+          state_desired_w_pos.positions = state_desired_parsed_.positions;
+
+          // RCLCPP_INFO(get_node()->get_logger(), "PRINTTING desired pos");
+          // RCLCPP_INFO(get_node()->get_logger(), "desired pos size %d", state_desired_parsed_.positions.size() );
+
+          for (const auto & p : state_desired_parsed_.positions)
+          {
+            // RCLCPP_INFO(get_node()->get_logger(), "desired pos %f", p);
+          }
+
+          assign_interface_from_point(joint_command_interface_[0], state_desired_parsed_.positions);
         }
         if (has_velocity_command_interface_)
         {
@@ -285,7 +297,12 @@ controller_interface::return_type JointTrajectoryController::update(
         if (has_acceleration_command_interface_)
         {
           // RCLCPP_INFO(get_node()->get_logger(), "desired accelerations %f", state_desired_.accelerations[0]);
-          assign_interface_from_point(joint_command_interface_[2], state_desired_.accelerations);
+
+          auto state_desired_w_accel = state_desired_;
+          
+          state_desired_w_accel.accelerations = state_desired_parsed_.accelerations;
+
+          assign_interface_from_point(joint_command_interface_[2], state_desired_parsed_.accelerations);
         }
         if (has_effort_command_interface_)
         {
@@ -1374,7 +1391,7 @@ void JointTrajectoryController::get_max_velocities(
     for (const auto & p : trajectory_msg->points)
     {
       velocities.push_back(abs(p.velocities[i]));
-      RCLCPP_INFO(get_node()->get_logger(), "VELOCITY of %s is %f",incoming_joint_name.c_str(), p.velocities[i] );
+      // RCLCPP_INFO(get_node()->get_logger(), "VELOCITY of %s is %f",incoming_joint_name.c_str(), p.velocities[i] );
 
     }
     auto maxElement = std::max_element(velocities.begin(), velocities.end());

@@ -131,6 +131,9 @@ protected:
   trajectory_msgs::msg::JointTrajectoryPoint state_desired_;
   trajectory_msgs::msg::JointTrajectoryPoint state_error_;
 
+  //max pos parsed
+  trajectory_msgs::msg::JointTrajectoryPoint state_desired_parsed_;
+
   // Degrees of freedom
   size_t dof_;
 
