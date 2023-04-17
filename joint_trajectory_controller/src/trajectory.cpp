@@ -193,6 +193,8 @@ bool Trajectory::sample_test(
 
     sampled_already_ = true;
     std::cout <<"TEST sampled_already_" << std::endl;
+    max_pos.clear();
+    max_accel.clear();
 
     // trajectory profile 
 
@@ -224,6 +226,7 @@ bool Trajectory::sample_test(
             // std::cout <<"Accel:  " << p.accelerations[i] << std::endl;
             positions.push_back(p.positions[i]);
             accelerations.push_back(abs(p.accelerations[i]));
+            
             acceleration_value = true;
           } else {
             traj_finished[incoming_joint_name] = true;

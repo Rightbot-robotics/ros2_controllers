@@ -149,6 +149,7 @@ controller_interface::return_type JointTrajectoryController::update(
     sort_to_local_joint_order(*new_external_msg);
     // TODO(denis): Add here integration of position and velocity
     traj_external_point_ptr_->update(*new_external_msg);
+    max_velocities_.clear();
     get_max_velocities(*new_external_msg);
   }
 
