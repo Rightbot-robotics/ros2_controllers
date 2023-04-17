@@ -111,7 +111,7 @@ public:
   bool sample_test(
     const rclcpp::Time & sample_time,
     const interpolation_methods::InterpolationMethod interpolation_method,
-    trajectory_msgs::msg::JointTrajectoryPoint & output_state, trajectory_msgs::msg::JointTrajectoryPoint & output_state_parsed,
+    trajectory_msgs::msg::JointTrajectoryPoint & output_state, trajectory_msgs::msg::JointTrajectoryPoint & output_state_parsed, bool & active,
     TrajectoryPointConstIter & start_segment_itr, TrajectoryPointConstIter & end_segment_itr);
 
   /**

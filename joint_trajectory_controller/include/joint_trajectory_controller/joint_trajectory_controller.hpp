@@ -133,6 +133,7 @@ protected:
 
   //max pos parsed
   trajectory_msgs::msg::JointTrajectoryPoint state_desired_parsed_;
+  bool traj_active;
 
   // Degrees of freedom
   size_t dof_;

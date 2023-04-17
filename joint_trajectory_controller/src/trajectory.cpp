@@ -171,7 +171,7 @@ bool Trajectory::sample(
 bool Trajectory::sample_test(
   const rclcpp::Time & sample_time,
   const interpolation_methods::InterpolationMethod interpolation_method,
-  trajectory_msgs::msg::JointTrajectoryPoint & output_state, trajectory_msgs::msg::JointTrajectoryPoint & output_state_parsed,
+  trajectory_msgs::msg::JointTrajectoryPoint & output_state, trajectory_msgs::msg::JointTrajectoryPoint & output_state_parsed, bool & active,
   TrajectoryPointConstIter & start_segment_itr, TrajectoryPointConstIter & end_segment_itr)
 {
   THROW_ON_NULLPTR(trajectory_msg_)
@@ -323,6 +323,7 @@ bool Trajectory::sample_test(
         output_state_parsed.positions = max_pos;
 
         output_state_parsed.accelerations = max_accel;
+        active = true;
       }
       start_segment_itr = begin() + i;
       end_segment_itr = begin() + (i + 1);
@@ -331,6 +332,7 @@ bool Trajectory::sample_test(
     }
   }
 
+  active = false;
   // whole animation has played out
   start_segment_itr = --end();
   end_segment_itr = end();
