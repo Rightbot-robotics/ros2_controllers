@@ -150,7 +150,7 @@ controller_interface::return_type JointTrajectoryController::update(
     // TODO(denis): Add here integration of position and velocity
     traj_external_point_ptr_->update(*new_external_msg);
     max_velocities_.clear();
-    get_max_velocities(*new_external_msg);
+    // get_max_velocities(*new_external_msg);
   }
 
   // TODO(anyone): can I here also use const on joint_interface since the reference_wrapper is not
@@ -286,15 +286,24 @@ controller_interface::return_type JointTrajectoryController::update(
           }
           else
           {
-            auto state_desired_w_max_velocity = state_desired_;
-            state_desired_w_max_velocity.velocities = max_velocities_;
+            // auto state_desired_w_max_velocity = state_desired_;
+            // state_desired_w_max_velocity.velocities = max_velocities_;
 
-            for (const auto & p : max_velocities_)
-            {
-              // RCLCPP_INFO(get_node()->get_logger(), "desired velocity %f", p);
+            // for (const auto & p : max_velocities_)
+            // {
+            //   // RCLCPP_INFO(get_node()->get_logger(), "desired velocity %f", p);
+            // }
+
+            // assign_interface_from_point(joint_command_interface_[1], state_desired_w_max_velocity.velocities);
+
+            if(traj_active){
+
+              assign_interface_from_point(joint_command_interface_[1], state_desired_parsed_.velocities);
+
             }
-
-            assign_interface_from_point(joint_command_interface_[1], state_desired_w_max_velocity.velocities);
+            else{
+              assign_interface_from_point(joint_command_interface_[1], state_desired_.velocities);
+            }
           }
         }
         if (has_acceleration_command_interface_)

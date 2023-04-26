@@ -184,6 +184,7 @@ private:
   bool sampled_already_ = false;
 
   std::vector<double> max_pos;
+  std::vector<double> max_vel;
   std::vector<double> max_accel;
 
 };

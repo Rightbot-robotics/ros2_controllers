@@ -194,6 +194,7 @@ bool Trajectory::sample_test(
     sampled_already_ = true;
     std::cout <<"TEST sampled_already_" << std::endl;
     max_pos.clear();
+    max_vel.clear();
     max_accel.clear();
 
     // trajectory profile 
@@ -206,6 +207,7 @@ bool Trajectory::sample_test(
     
       const std::string & incoming_joint_name = trajectory_msg_->joint_names[i];
       std::vector<double> positions;
+      std::vector<double> velocities;
       std::vector<double> accelerations;
       traj_started[incoming_joint_name] = false;
       traj_finished[incoming_joint_name] = false;
@@ -213,8 +215,10 @@ bool Trajectory::sample_test(
 
       for (const auto & p : trajectory_msg_->points)
       {
-        
-        if(abs(p.velocities[i]) > 0.0){
+        std::cout <<"Vel:  " << p.velocities[i] << std::endl;
+        std::cout <<"Pos:  " << p.positions[i] << std::endl;
+        std::cout <<"Accel:  " << p.accelerations[i] << std::endl;
+        if(abs(p.velocities[i]) > 0.0 + 10e-5){
           // variable starting traj true
           traj_started[incoming_joint_name] = true;
         }
@@ -225,6 +229,7 @@ bool Trajectory::sample_test(
             // std::cout <<"Pos:  " << p.positions[i] << std::endl;
             // std::cout <<"Accel:  " << p.accelerations[i] << std::endl;
             positions.push_back(p.positions[i]);
+            velocities.push_back(abs(p.velocities[i]));
             accelerations.push_back(abs(p.accelerations[i]));
             
             acceleration_value = true;
@@ -232,15 +237,27 @@ bool Trajectory::sample_test(
             traj_finished[incoming_joint_name] = true;
             std::cout <<"MAX POSITION of " << incoming_joint_name << " is " << p.positions[i] << std::endl;
             // std::cout <<"Vel:  " << p.velocities[i] << std::endl;
-            max_pos.push_back(p.positions[i]);
-
+      
             if(acceleration_value){
+
+              max_pos.push_back(p.positions[i]);
+
               auto maxElement = std::max_element(accelerations.begin(), accelerations.end());
               std::cout <<"MAX ACCEL of " << incoming_joint_name << " is " << *maxElement << std::endl;
               max_accel.push_back( *maxElement);
+
+              auto maxElementVel = std::max_element(velocities.begin(), velocities.end());
+              std::cout <<"MAX VEL of " << incoming_joint_name << " is " << *maxElementVel << std::endl;
+              max_vel.push_back(*maxElementVel);
+
             } else {
               std::cout <<"MAX ACCEL of " << incoming_joint_name << " is 0.0" << std::endl;
               max_accel.push_back( 0.0);
+
+              std::cout <<"MAX VEL of " << incoming_joint_name << " is 0.0" << std::endl;
+              max_vel.push_back(0.0);
+
+              max_pos.push_back(0.0);
             }
             
           }
@@ -253,6 +270,9 @@ bool Trajectory::sample_test(
 
         std::cout <<"MAX ACCEL of " << incoming_joint_name << " is 0.0" << std::endl;
         max_accel.push_back( 0.0);
+
+        std::cout <<"MAX VEL of " << incoming_joint_name << " is 0.0" << std::endl;
+        max_vel.push_back(0.0);
         
       }
     }
@@ -324,7 +344,7 @@ bool Trajectory::sample_test(
 
         output_state_parsed = output_state;
         output_state_parsed.positions = max_pos;
-
+        output_state_parsed.velocities = max_vel;
         output_state_parsed.accelerations = max_accel;
         active = true;
       }
