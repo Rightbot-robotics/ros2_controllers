@@ -262,19 +262,10 @@ controller_interface::return_type JointTrajectoryController::update(
         if (has_position_command_interface_)
         {
           if(traj_active){
-            auto state_desired_w_pos = state_desired_;
-          
-            state_desired_w_pos.positions = state_desired_parsed_.positions; 
-            // for (const auto & p : state_desired_parsed_.positions)
-            // {
-            //   // RCLCPP_INFO(get_node()->get_logger(), "desired pos %f", p);
-            // }
-
             assign_interface_from_point(joint_command_interface_[0], state_desired_parsed_.positions);
-
           }
           else{
-            assign_interface_from_point(joint_command_interface_[0], state_desired_.positions);
+            // assign_interface_from_point(joint_command_interface_[0], state_desired_.positions);
           }
           
         }
@@ -286,51 +277,23 @@ controller_interface::return_type JointTrajectoryController::update(
           }
           else
           {
-            // auto state_desired_w_max_velocity = state_desired_;
-            // state_desired_w_max_velocity.velocities = max_velocities_;
-
-            // for (const auto & p : max_velocities_)
-            // {
-            //   // RCLCPP_INFO(get_node()->get_logger(), "desired velocity %f", p);
-            // }
-
-            // assign_interface_from_point(joint_command_interface_[1], state_desired_w_max_velocity.velocities);
 
             if(traj_active){
-
               assign_interface_from_point(joint_command_interface_[1], state_desired_parsed_.velocities);
-
             }
             else{
-              assign_interface_from_point(joint_command_interface_[1], state_desired_.velocities);
+              // assign_interface_from_point(joint_command_interface_[1], state_desired_.velocities);
             }
           }
         }
         if (has_acceleration_command_interface_)
         {
-          // state_desired_.accelerations;
-          // RCLCPP_INFO(get_node()->get_logger(), "desired accelerations %f", state_desired_.accelerations[0]);
-
-          // auto state_desired_w_accel = state_desired_;
-
-          // state_desired_w_accel.accelerations = state_desired_parsed_.accelerations;
-          
-          // assign_interface_from_point(joint_command_interface_[2], state_desired_.accelerations);
 
           if(traj_active){
-            auto state_desired_w_accel = state_desired_;
-          
-            state_desired_w_accel.accelerations = state_desired_parsed_.accelerations;
-            // for (const auto & p : state_desired_parsed_.positions)
-            // {
-            //   // RCLCPP_INFO(get_node()->get_logger(), "desired pos %f", p);
-            // }
-
             assign_interface_from_point(joint_command_interface_[2], state_desired_parsed_.accelerations);
-
           }
           else{
-            assign_interface_from_point(joint_command_interface_[2], state_desired_.accelerations);
+            // assign_interface_from_point(joint_command_interface_[2], state_desired_.accelerations);
           }
 
         }
@@ -1257,8 +1220,8 @@ bool JointTrajectoryController::validate_trajectory_msg(
   {
     const std::string & incoming_joint_name = trajectory.joint_names[i];
 
-    RCLCPP_INFO(get_node()->get_logger(), "incoming_joint_name %s", incoming_joint_name.c_str());
-    RCLCPP_INFO(get_node()->get_logger(), "available joint_names %s", trajectory.joint_names[i].c_str());
+    // RCLCPP_INFO(get_node()->get_logger(), "incoming_joint_name %s", incoming_joint_name.c_str());
+    // RCLCPP_INFO(get_node()->get_logger(), "available joint_names %s", trajectory.joint_names[i].c_str());
 
 
     auto it = std::find(params_.joints.begin(), params_.joints.end(), incoming_joint_name);
@@ -1270,39 +1233,6 @@ bool JointTrajectoryController::validate_trajectory_msg(
       return false;
     }
   }
-
-  // // finding max velocity for all joints
-  // std::vector<double> max_velocities;
-  // std::unordered_map<std::string, double> max_velocities_map;
-
-  // max_velocities.resize(7);
-
-  // // max_velocities_.resize(7);
-  // for (size_t i = 0; i < trajectory.joint_names.size(); ++i)
-  // {
-  //   const std::string & incoming_joint_name = trajectory.joint_names[i];
-  //   std::vector<double> velocities;
-  //   velocities.resize(trajectory.points.size());
-  //   for (const auto & p : trajectory.points)
-  //   {
-  //     // RCLCPP_INFO(get_node()->get_logger(), "velocites %f", p.velocities[i]);
-  //     velocities.push_back(abs(p.velocities[i]));
-  //   }
-  //   auto maxElement = std::max_element(velocities.begin(), velocities.end());
-  //   RCLCPP_INFO(get_node()->get_logger(), "MAX VELOCITY IS %s is %f",incoming_joint_name.c_str(),*maxElement );
-
-  //   max_velocities_map[incoming_joint_name] = *maxElement;
-  // }
-  // // max_velocities_ = max_velocities;
-
-  // for(const auto & p : params_.joints){
-  //   max_velocities.push_back(max_velocities_map[p]);
-  //   RCLCPP_INFO(get_node()->get_logger(), "sequenced MAX VELOCITY IS %s is %f",p.c_str(),max_velocities_map[p] );
-  // }
-
-
-
-
 
   rclcpp::Duration previous_traj_time(0ms);
   for (size_t i = 0; i < trajectory.points.size(); ++i)
