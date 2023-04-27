@@ -197,6 +197,14 @@ controller_interface::return_type JointTrajectoryController::update(
     if (valid_point)
     {
       // RCLCPP_INFO(get_node()->get_logger(), "valid point");
+      // sending control state 0.0 for valid point 
+      control_state_.clear();
+      for (size_t i = 0; i < dof_; ++i){
+        control_state_.push_back(0.0); // enable
+      }
+      assign_interface_from_point(joint_command_interface_[4], control_state_);
+      //
+      
       bool tolerance_violated_while_moving = false;
       bool outside_goal_tolerance = false;
       bool within_goal_time = true;
@@ -256,26 +264,6 @@ controller_interface::return_type JointTrajectoryController::update(
                                 (uint64_t)period.nanoseconds());
           }
         }
-
-        if(is_empty_traj){
-          control_state_.clear();
-          for (size_t i = 0; i < dof_; ++i){
-            control_state_.push_back(2.0); // disable
-            RCLCPP_INFO(
-              get_node()->get_logger(), "control state size %f", control_state_.size());
-          }
-          assign_interface_from_point(joint_command_interface_[4], control_state_);
-        } else {
-          control_state_.clear();
-          for (size_t i = 0; i < dof_; ++i){
-            control_state_.push_back(0.0); // disable
-            // RCLCPP_INFO(
-            //   get_node()->get_logger(), "control state size %f", control_state_.size());
-          }
-          assign_interface_from_point(joint_command_interface_[4], control_state_);
-
-        }
-
 
         // set values for next hardware write()
         if (has_position_command_interface_)
@@ -396,6 +384,13 @@ controller_interface::return_type JointTrajectoryController::update(
         set_hold_position();
         RCLCPP_ERROR(get_node()->get_logger(), "Holding position due to state tolerance violation");
       }
+    } else {
+
+      control_state_.clear();
+      for (size_t i = 0; i < dof_; ++i){
+        control_state_.push_back(2.0); // quick stop
+      }
+      assign_interface_from_point(joint_command_interface_[4], control_state_);
     }
 
   }
@@ -773,8 +768,8 @@ controller_interface::CallbackReturn JointTrajectoryController::on_configure(
   for (size_t i = 0; i < dof_; ++i){
     
     control_state_.push_back(0.0);
-    RCLCPP_INFO(
-      logger, "Initial control state %f", control_state_);
+    // RCLCPP_INFO(
+    //   logger, "Initial control state %f", control_state_);
 
   }
 
