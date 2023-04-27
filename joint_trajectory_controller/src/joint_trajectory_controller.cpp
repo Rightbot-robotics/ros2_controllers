@@ -191,10 +191,9 @@ controller_interface::return_type JointTrajectoryController::update(
     TrajectoryPointConstIter start_segment_itr, end_segment_itr;
     const bool valid_point =
       (*traj_point_active_ptr_)
-        ->sample_test(time, interpolation_method_, state_desired_, state_desired_parsed_, traj_active, start_segment_itr, end_segment_itr);
+        ->sample_test(time, interpolation_method_, state_desired_, state_desired_parsed_, traj_active, start_segment_itr, end_segment_itr, is_empty_traj);
 
-    // RCLCPP_INFO(get_node()->get_logger(), "checking valid point");
-
+    // RCLCPP_INFO(get_node()->get_logger(), "traj active %d", traj_active);
     if (valid_point)
     {
       // RCLCPP_INFO(get_node()->get_logger(), "valid point");
@@ -257,6 +256,26 @@ controller_interface::return_type JointTrajectoryController::update(
                                 (uint64_t)period.nanoseconds());
           }
         }
+
+        if(is_empty_traj){
+          control_state_.clear();
+          for (size_t i = 0; i < dof_; ++i){
+            control_state_.push_back(2.0); // disable
+            RCLCPP_INFO(
+              get_node()->get_logger(), "control state size %f", control_state_.size());
+          }
+          assign_interface_from_point(joint_command_interface_[4], control_state_);
+        } else {
+          control_state_.clear();
+          for (size_t i = 0; i < dof_; ++i){
+            control_state_.push_back(0.0); // disable
+            // RCLCPP_INFO(
+            //   get_node()->get_logger(), "control state size %f", control_state_.size());
+          }
+          assign_interface_from_point(joint_command_interface_[4], control_state_);
+
+        }
+
 
         // set values for next hardware write()
         if (has_position_command_interface_)
@@ -378,6 +397,7 @@ controller_interface::return_type JointTrajectoryController::update(
         RCLCPP_ERROR(get_node()->get_logger(), "Holding position due to state tolerance violation");
       }
     }
+
   }
 
   publish_state(state_desired_, state_current_, state_error_);
@@ -572,6 +592,8 @@ controller_interface::CallbackReturn JointTrajectoryController::on_configure(
     contains_interface_type(params_.command_interfaces, hardware_interface::HW_IF_ACCELERATION);
   has_effort_command_interface_ =
     contains_interface_type(params_.command_interfaces, hardware_interface::HW_IF_EFFORT);
+  has_control_state_command_interface_ = 
+    contains_interface_type(params_.command_interfaces, hardware_interface::HW_IF_CONTROL_STATE);
 
   // if there is only velocity or if there is effort command interface
   // then use also PID adapter
@@ -747,6 +769,14 @@ controller_interface::CallbackReturn JointTrajectoryController::on_configure(
   resize_joint_trajectory_point(state_desired_, dof_);
   resize_joint_trajectory_point(state_error_, dof_);
   resize_joint_trajectory_point(last_commanded_state_, dof_);
+
+  for (size_t i = 0; i < dof_; ++i){
+    
+    control_state_.push_back(0.0);
+    RCLCPP_INFO(
+      logger, "Initial control state %f", control_state_);
+
+  }
 
   return CallbackReturn::SUCCESS;
 }

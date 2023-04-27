@@ -118,12 +118,14 @@ protected:
   // as the following constants
 
   std::vector<double> max_velocities_;
+  std::vector<double> control_state_;
 
   const std::vector<std::string> allowed_interface_types_ = {
     hardware_interface::HW_IF_POSITION,
     hardware_interface::HW_IF_VELOCITY,
     hardware_interface::HW_IF_ACCELERATION,
     hardware_interface::HW_IF_EFFORT,
+    hardware_interface::HW_IF_CONTROL_STATE
   };
 
   // Preallocate variables used in the realtime update() function
@@ -134,6 +136,7 @@ protected:
   //max pos parsed
   trajectory_msgs::msg::JointTrajectoryPoint state_desired_parsed_;
   bool traj_active;
+  bool is_empty_traj;
 
   // Degrees of freedom
   size_t dof_;
@@ -166,6 +169,7 @@ protected:
   bool has_velocity_command_interface_ = false;
   bool has_acceleration_command_interface_ = false;
   bool has_effort_command_interface_ = false;
+  bool has_control_state_command_interface_ = false;
 
   /// If true, a velocity feedforward term plus corrective PID term is used
   bool use_closed_loop_pid_adapter_ = false;
