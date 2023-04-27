@@ -323,7 +323,7 @@ controller_interface::return_type JointTrajectoryController::update(
       const auto active_goal = *rt_active_goal_.readFromRT();
       if (active_goal)
       {
-        RCLCPP_INFO(get_node()->get_logger(), "active goal");
+        // RCLCPP_INFO(get_node()->get_logger(), "active goal");
         // send feedback
         auto feedback = std::make_shared<FollowJTrajAction::Feedback>();
         feedback->header.stamp = time;
