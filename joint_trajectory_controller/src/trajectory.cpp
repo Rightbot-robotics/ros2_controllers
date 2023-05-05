@@ -215,73 +215,90 @@ bool Trajectory::sample_test(
       traj_finished[incoming_joint_name] = false;
       bool acceleration_value = false;
 
-      for (const auto & p : trajectory_msg_->points)
-      {
+      // for (const auto & p : trajectory_msg_->points)
+      // {
 
-        velocities.push_back(abs(p.velocities[i]));
+      //   velocities.push_back(abs(p.velocities[i]));
 
-        // std::cout <<"Vel:  " << p.velocities[i] << std::endl;
-        // std::cout <<"Pos:  " << p.positions[i] << std::endl;
-        // std::cout <<"Accel:  " << p.accelerations[i] << std::endl;
-        if(abs(p.velocities[i]) > 0.0){
-          // variable starting traj true
-          traj_started[incoming_joint_name] = true;
-        }
+      //   // std::cout <<"Vel:  " << p.velocities[i] << std::endl;
+      //   // std::cout <<"Pos:  " << p.positions[i] << std::endl;
+      //   // std::cout <<"Accel:  " << p.accelerations[i] << std::endl;
+      //   if(abs(p.velocities[i]) > 0.0){
+      //     // variable starting traj true
+      //     traj_started[incoming_joint_name] = true;
+      //   }
 
-        if(traj_started[incoming_joint_name] && !traj_finished[incoming_joint_name]){
-          if(abs(p.velocities[i]) > 0.0 + 10e-5){
-            // std::cout <<"Vel:  " << p.velocities[i] << std::endl;
-            // std::cout <<"Pos:  " << p.positions[i] << std::endl;
-            // std::cout <<"Accel:  " << p.accelerations[i] << std::endl;
-            positions.push_back(p.positions[i]);
-            // velocities.push_back(abs(p.velocities[i]));
-            accelerations.push_back(abs(p.accelerations[i]));
+      //   if(traj_started[incoming_joint_name] && !traj_finished[incoming_joint_name]){
+      //     if(abs(p.velocities[i]) > 0.0 + 10e-5){
+      //       // std::cout <<"Vel:  " << p.velocities[i] << std::endl;
+      //       // std::cout <<"Pos:  " << p.positions[i] << std::endl;
+      //       // std::cout <<"Accel:  " << p.accelerations[i] << std::endl;
+      //       positions.push_back(p.positions[i]);
+      //       // velocities.push_back(abs(p.velocities[i]));
+      //       accelerations.push_back(abs(p.accelerations[i]));
             
-            acceleration_value = true;
-          } else {
-            traj_finished[incoming_joint_name] = true;
-            std::cout <<"MAX POSITION of " << incoming_joint_name << " is " << p.positions[i] << std::endl;
-            // std::cout <<"Vel:  " << p.velocities[i] << std::endl;
-            max_pos.push_back(p.positions[i]);
+      //       acceleration_value = true;
+      //     } else {
+      //       traj_finished[incoming_joint_name] = true;
+      //       std::cout <<"MAX POSITION of " << incoming_joint_name << " is " << p.positions[i] << std::endl;
+      //       // std::cout <<"Vel:  " << p.velocities[i] << std::endl;
+      //       max_pos.push_back(p.positions[i]);
 
-            if(acceleration_value){
+      //       if(acceleration_value){
 
-              auto maxElement = std::max_element(accelerations.begin(), accelerations.end());
-              std::cout <<"MAX ACCEL of " << incoming_joint_name << " is " << *maxElement << std::endl;
-              max_accel.push_back( *maxElement);
+      //         auto maxElement = std::max_element(accelerations.begin(), accelerations.end());
+      //         std::cout <<"MAX ACCEL of " << incoming_joint_name << " is " << *maxElement << std::endl;
+      //         max_accel.push_back( *maxElement);
 
-              // auto maxElementVel = std::max_element(velocities.begin(), velocities.end());
-              // std::cout <<"MAX VEL of " << incoming_joint_name << " is " << *maxElementVel << std::endl;
-              // max_vel.push_back(*maxElementVel);
+      //         // auto maxElementVel = std::max_element(velocities.begin(), velocities.end());
+      //         // std::cout <<"MAX VEL of " << incoming_joint_name << " is " << *maxElementVel << std::endl;
+      //         // max_vel.push_back(*maxElementVel);
 
-            } else {
-              std::cout <<"MAX ACCEL of " << incoming_joint_name << " is 0.0" << std::endl;
-              max_accel.push_back( 0.0);
+      //       } else {
+      //         std::cout <<"MAX ACCEL of " << incoming_joint_name << " is 0.0" << std::endl;
+      //         max_accel.push_back( 0.0);
 
-              // std::cout <<"MAX VEL of " << incoming_joint_name << " is 0.0" << std::endl;
-              // max_vel.push_back(0.0);
+      //         // std::cout <<"MAX VEL of " << incoming_joint_name << " is 0.0" << std::endl;
+      //         // max_vel.push_back(0.0);
 
-            }
+      //       }
             
-          }
-        }
-      }
+      //     }
+      //   }
+      //   //
+      // }
 
-      auto maxElementVel = std::max_element(velocities.begin(), velocities.end());
-      max_vel.push_back( *maxElementVel);
-      std::cout <<"MAX VELOCITY of " << incoming_joint_name << " is " << *maxElementVel << std::endl;
+      // auto maxElementVel = std::max_element(velocities.begin(), velocities.end());
+      // max_vel.push_back( *maxElementVel);
+      // std::cout <<"MAX VELOCITY of " << incoming_joint_name << " is " << *maxElementVel << std::endl;
 
-      if(!traj_started[incoming_joint_name] && !traj_finished[incoming_joint_name]){
-        std::cout <<"MAX POSITION of " << incoming_joint_name << "is 0.0" << std::endl;
-        max_pos.push_back(0.0);
+      // if(!traj_started[incoming_joint_name] && !traj_finished[incoming_joint_name]){
+      //   std::cout <<"MAX POSITION of " << incoming_joint_name << "is 0.0" << std::endl;
+      //   max_pos.push_back(0.0);
 
-        std::cout <<"MAX ACCEL of " << incoming_joint_name << " is 0.0" << std::endl;
-        max_accel.push_back( 0.0);
+      //   std::cout <<"MAX ACCEL of " << incoming_joint_name << " is 0.0" << std::endl;
+      //   max_accel.push_back( 0.0);
 
-        // std::cout <<"MAX VEL of " << incoming_joint_name << " is 0.0" << std::endl;
-        // max_vel.push_back(0.0);
+      //   // std::cout <<"MAX VEL of " << incoming_joint_name << " is 0.0" << std::endl;
+      //   // max_vel.push_back(0.0);
         
+      // }
+
+      for (size_t j = 0; j < trajectory_msg_->points.size()-2; ++j){
+
+        double floating_window_point_1;
+        double floating_window_point_2;
+        double floating_window_point_3;
+
+        floating_window_point_1 = p[j].velocities[i];
+        floating_window_point_2 = p[j+1].velocities[i]
+        floating_window_point_3 = p[j+2].velocities[i]
+
+        if((floating_window_point_1 > 0.0) && (floating_window_point_2 > floating_window_point_3)) 
+
+
       }
+
     }
 
   }
