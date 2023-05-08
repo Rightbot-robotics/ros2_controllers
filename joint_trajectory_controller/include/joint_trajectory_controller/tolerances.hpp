@@ -150,12 +150,12 @@ inline bool check_state_tolerance_per_joint(
   if (show_errors)
   {
     const auto logger = rclcpp::get_logger("tolerances");
-    RCLCPP_ERROR(logger, "Path state tolerances failed:");
+    // RCLCPP_ERROR(logger, "Path state tolerances failed:");
 
-    if (state_tolerance.position > 0.0 && abs(error_position) > 0.05)
+    if (state_tolerance.position > 0.0 && abs(error_position) > 0.02)
     {
       RCLCPP_ERROR(
-        logger, "Position Error: %f, Position Logging Tolerance: 0.05", error_position);
+        logger, "Position Error: %f, Position Logging Tolerance: 0.02", error_position);
     }
 
     if (state_tolerance.position > 0.0 && abs(error_position) > state_tolerance.position)
