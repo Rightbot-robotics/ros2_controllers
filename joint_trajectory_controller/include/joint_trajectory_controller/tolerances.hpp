@@ -142,11 +142,12 @@ inline bool check_state_tolerance_per_joint(
     !(state_tolerance.velocity > 0.0 && abs(error_velocity) > state_tolerance.velocity) &&
     !(state_tolerance.acceleration > 0.0 && abs(error_acceleration) > state_tolerance.acceleration);
 
+  const auto logger = rclcpp::get_logger("tolerances");
   if (is_valid)
   {
     if (state_tolerance.position > 0.0 && abs(error_position) > 0.02)
     {
-      RCLCPP_ERROR(
+      RCLCPP_INFO(
         logger, "Joint index: %d, Position Error: %f, Position Logging Tolerance: 0.02", joint_idx, error_position);
     }
     return true;
@@ -154,7 +155,7 @@ inline bool check_state_tolerance_per_joint(
 
   if (show_errors)
   {
-    const auto logger = rclcpp::get_logger("tolerances");
+    
     // RCLCPP_ERROR(logger, "Path state tolerances failed:");
 
     if (state_tolerance.position > 0.0 && abs(error_position) > 0.02)
