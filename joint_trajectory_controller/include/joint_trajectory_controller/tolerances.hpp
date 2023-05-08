@@ -144,6 +144,11 @@ inline bool check_state_tolerance_per_joint(
 
   if (is_valid)
   {
+    if (state_tolerance.position > 0.0 && abs(error_position) > 0.02)
+    {
+      RCLCPP_ERROR(
+        logger, "Joint index: %d, Position Error: %f, Position Logging Tolerance: 0.02", joint_idx, error_position);
+    }
     return true;
   }
 
