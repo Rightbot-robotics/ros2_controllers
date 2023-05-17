@@ -138,9 +138,9 @@ inline bool check_state_tolerance_per_joint(
     state_error.accelerations.empty() ? 0.0 : state_error.accelerations[joint_idx];
 
   const bool is_valid =
-    !(state_tolerance.position > 0.0 && abs(error_position) > state_tolerance.position) &&
-    !(state_tolerance.velocity > 0.0 && abs(error_velocity) > state_tolerance.velocity) &&
-    !(state_tolerance.acceleration > 0.0 && abs(error_acceleration) > state_tolerance.acceleration);
+    !(state_tolerance.position > 0.0 && abs(error_position) > state_tolerance.position);
+    //!(state_tolerance.velocity > 0.0 && abs(error_velocity) > state_tolerance.velocity) &&
+    //!(state_tolerance.acceleration > 0.0 && abs(error_acceleration) > state_tolerance.acceleration);
 
   const auto logger = rclcpp::get_logger("tolerances");
   if (is_valid)
