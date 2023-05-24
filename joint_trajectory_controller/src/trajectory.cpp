@@ -201,19 +201,13 @@ bool Trajectory::sample_test(
 
     // trajectory profile 
 
-    std::unordered_map<std::string, bool> traj_started;
-    std::unordered_map<std::string, bool> traj_finished;
+    // std::unordered_map<std::string, bool> traj_started;
+    // std::unordered_map<std::string, bool> traj_finished;
+    bool traj_started;
+    bool traj_finished;
 
     for (size_t i = 0; i < trajectory_msg_->joint_names.size(); ++i)
     {
-    
-      const std::string & incoming_joint_name = trajectory_msg_->joint_names[i];
-      std::vector<double> positions;
-      std::vector<double> velocities;
-      std::vector<double> accelerations;
-      traj_started[incoming_joint_name] = false;
-      traj_finished[incoming_joint_name] = false;
-      bool acceleration_value = false;
 
       // for (const auto & p : trajectory_msg_->points)
       // {
@@ -284,20 +278,112 @@ bool Trajectory::sample_test(
         
       // }
 
+      const std::string & incoming_joint_name = trajectory_msg_->joint_names[i];
+      std::vector<double> positions;
+      std::vector<double> velocities;
+      std::vector<double> accelerations;
+
+      std::vector<double> current_joint_pos;
+      std::vector<double> current_joint_vel;
+      std::vector<double> current_joint_accel;
+      std::vector<rclcpp::Duration> current_joint_traj_start_time;
+
+      traj_started = false;
+      traj_finished = false;
+      bool acceleration_value = false;
+
       for (size_t j = 0; j < trajectory_msg_->points.size()-2; ++j){
 
-        double floating_window_point_1;
-        double floating_window_point_2;
-        double floating_window_point_3;
+        auto p = trajectory_msg_->points;
 
-        floating_window_point_1 = p[j].velocities[i];
-        floating_window_point_2 = p[j+1].velocities[i]
-        floating_window_point_3 = p[j+2].velocities[i]
+        double start_floating_window_point_1;
+        double start_floating_window_point_2;
+        double start_floating_window_point_3;
 
-        if((floating_window_point_1 > 0.0) && (floating_window_point_2 > floating_window_point_3)) 
+        double finish_floating_window_point_1;
+        double finish_floating_window_point_2;
+        double finish_floating_window_point_3;
 
+        if(!traj_started && !traj_finished){
 
+          start_floating_window_point_1 = abs(p[j].velocities[i]);
+          start_floating_window_point_2 = abs(p[j+1].velocities[i]);
+          start_floating_window_point_3 = abs(p[j+2].velocities[i]);
+
+          if((start_floating_window_point_1 > 0.0 + 10e-5) 
+            && (start_floating_window_point_2 > start_floating_window_point_1)
+            && (start_floating_window_point_3 > start_floating_window_point_2)){
+            //
+            traj_started = true;
+            rclcpp::Duration current_trapezoid_start_time = p[i].time_from_start;
+            current_joint_traj_start_time.push_back(current_trapezoid_start_time); // traj start time
+
+            velocities.push_back(abs(p[j].velocities[i]));
+            accelerations.push_back(abs(p[j].accelerations[i]));
+          }
+        }
+
+        if(traj_started && !traj_finished){
+          finish_floating_window_point_1 = abs(p[j].velocities[i]);
+          finish_floating_window_point_2 = abs(p[j+1].velocities[i]);
+          finish_floating_window_point_3 = abs(p[j+2].velocities[i]);
+
+          if((finish_floating_window_point_3 < 0.0 + 10e-5) 
+            && (start_floating_window_point_3 < start_floating_window_point_2)
+            && (start_floating_window_point_2 < start_floating_window_point_1)){
+            //
+            traj_finished = true;
+            traj_started = false;
+
+            velocities.push_back(abs(p[j].velocities[i]));
+            velocities.push_back(abs(p[j+1].velocities[i]));
+            velocities.push_back(abs(p[j+2].velocities[i]));
+
+            accelerations.push_back(abs(p[j].accelerations[i]));
+            accelerations.push_back(abs(p[j+1].accelerations[i]));
+            accelerations.push_back(abs(p[j+2].accelerations[i]));
+
+          }else{
+            velocities.push_back(abs(p[j].velocities[i]));
+            accelerations.push_back(abs(p[j].accelerations[i]));
+
+          }
+        }
+
+        if(traj_finished && !traj_started){
+
+          auto maxElementPos =  p[j+2].velocities[i];
+          auto maxElementVel = std::max_element(velocities.begin(), velocities.end());
+          auto maxElementAccel = std::max_element(accelerations.begin(), accelerations.end());
+          
+          current_joint_pos.push_back(maxElementPos);
+          current_joint_vel.push_back(*maxElementVel);
+          current_joint_accel.push_back(*maxElementAccel);
+
+          traj_finished = false;
+          traj_started = false;
+
+          positions.clear();
+          velocities.clear();
+          accelerations.clear();
+
+        }
+
+        if(j == trajectory_msg_->points.size()-3){
+          if(current_joint_vel.empty()){
+            current_joint_pos.push_back(0.0);
+            current_joint_vel.push_back(0.0);
+            current_joint_accel.push_back(0.0);
+            current_joint_traj_start_time.push_back(p[0].time_from_start);
+          }
+        }
+        
       }
+
+      max_pos.push_back(current_joint_pos);
+      max_vel.push_back(current_joint_vel);
+      max_accel.push_back(current_joint_accel);
+      traj_start_time.push_back(current_joint_traj_start_time);
 
     }
 
@@ -367,9 +453,28 @@ bool Trajectory::sample_test(
         interpolate_between_points(t0, point, t1, next_point, sample_time, output_state);
 
         output_state_parsed = output_state;
-        output_state_parsed.positions = max_pos;
-        output_state_parsed.velocities = max_vel;
-        output_state_parsed.accelerations = max_accel;
+        for(size_t i = 0; i < max_vel.size(); ++i){// joints
+          //
+          for(size_t j = 0; j < max_vel[i].size(); ++j){ // mulitple trapezoids for the joint
+          //
+            const rclcpp::Time traj_time = trajectory_start_time_ + traj_start_time[i][j];
+
+            if(sample_time >= traj_time){
+              output_state_parsed.positions[i]= max_pos[i][j];
+              output_state_parsed.velocities[i]= max_vel[i][j];
+              output_state_parsed.accelerations[i]= max_accel[i][j];
+
+
+            }
+
+          }
+
+        }
+
+        
+        // output_state_parsed.positions = max_pos;
+        // output_state_parsed.velocities = max_vel;
+        // output_state_parsed.accelerations = max_accel;
         active = true;
       }
       start_segment_itr = begin() + i;

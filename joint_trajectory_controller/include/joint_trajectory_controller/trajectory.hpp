@@ -183,9 +183,10 @@ private:
 
   bool sampled_already_ = false;
 
-  std::vector<double> max_pos;
-  std::vector<double> max_vel;
-  std::vector<double> max_accel;
+  std::vector<std::vector<double>> max_pos;
+  std::vector<std::vector<double>> max_vel;
+  std::vector<std::vector<double>> max_accel;
+  std::vector<std::vector<rclcpp::Duration>> traj_start_time;
 
 };
 
