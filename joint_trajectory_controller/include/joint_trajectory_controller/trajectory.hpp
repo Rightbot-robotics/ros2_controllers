@@ -188,6 +188,12 @@ private:
   std::vector<std::vector<double>> max_accel;
   std::vector<std::vector<rclcpp::Duration>> traj_start_time;
 
+  std::vector<double> final_positions;
+  std::vector<double> final_velocities;
+  std::vector<double> final_accelerations;
+
+  bool once = false;
+
 };
 
 /**

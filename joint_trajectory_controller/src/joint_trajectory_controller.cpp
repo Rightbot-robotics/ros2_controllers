@@ -281,6 +281,7 @@ controller_interface::return_type JointTrajectoryController::update(
         {
           if (use_closed_loop_pid_adapter_)
           {
+            
             assign_interface_from_point(joint_command_interface_[1], tmp_command_);
           }
           else

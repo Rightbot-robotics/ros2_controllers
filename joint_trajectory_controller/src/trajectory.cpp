@@ -199,87 +199,23 @@ bool Trajectory::sample_test(
     max_vel.clear();
     max_accel.clear();
 
-    // trajectory profile 
-
-    // std::unordered_map<std::string, bool> traj_started;
-    // std::unordered_map<std::string, bool> traj_finished;
     bool traj_started;
     bool traj_finished;
+
+    final_positions.clear();
+    final_velocities.clear();
+    final_accelerations.clear();
+
+    final_positions.resize(trajectory_msg_->joint_names.size());
+    final_velocities.resize(trajectory_msg_->joint_names.size());
+    final_accelerations.resize(trajectory_msg_->joint_names.size());
 
     for (size_t i = 0; i < trajectory_msg_->joint_names.size(); ++i)
     {
 
-      // for (const auto & p : trajectory_msg_->points)
-      // {
-
-      //   velocities.push_back(abs(p.velocities[i]));
-
-      //   // std::cout <<"Vel:  " << p.velocities[i] << std::endl;
-      //   // std::cout <<"Pos:  " << p.positions[i] << std::endl;
-      //   // std::cout <<"Accel:  " << p.accelerations[i] << std::endl;
-      //   if(abs(p.velocities[i]) > 0.0){
-      //     // variable starting traj true
-      //     traj_started[incoming_joint_name] = true;
-      //   }
-
-      //   if(traj_started[incoming_joint_name] && !traj_finished[incoming_joint_name]){
-      //     if(abs(p.velocities[i]) > 0.0 + 10e-5){
-      //       // std::cout <<"Vel:  " << p.velocities[i] << std::endl;
-      //       // std::cout <<"Pos:  " << p.positions[i] << std::endl;
-      //       // std::cout <<"Accel:  " << p.accelerations[i] << std::endl;
-      //       positions.push_back(p.positions[i]);
-      //       // velocities.push_back(abs(p.velocities[i]));
-      //       accelerations.push_back(abs(p.accelerations[i]));
-            
-      //       acceleration_value = true;
-      //     } else {
-      //       traj_finished[incoming_joint_name] = true;
-      //       std::cout <<"MAX POSITION of " << incoming_joint_name << " is " << p.positions[i] << std::endl;
-      //       // std::cout <<"Vel:  " << p.velocities[i] << std::endl;
-      //       max_pos.push_back(p.positions[i]);
-
-      //       if(acceleration_value){
-
-      //         auto maxElement = std::max_element(accelerations.begin(), accelerations.end());
-      //         std::cout <<"MAX ACCEL of " << incoming_joint_name << " is " << *maxElement << std::endl;
-      //         max_accel.push_back( *maxElement);
-
-      //         // auto maxElementVel = std::max_element(velocities.begin(), velocities.end());
-      //         // std::cout <<"MAX VEL of " << incoming_joint_name << " is " << *maxElementVel << std::endl;
-      //         // max_vel.push_back(*maxElementVel);
-
-      //       } else {
-      //         std::cout <<"MAX ACCEL of " << incoming_joint_name << " is 0.0" << std::endl;
-      //         max_accel.push_back( 0.0);
-
-      //         // std::cout <<"MAX VEL of " << incoming_joint_name << " is 0.0" << std::endl;
-      //         // max_vel.push_back(0.0);
-
-      //       }
-            
-      //     }
-      //   }
-      //   //
-      // }
-
-      // auto maxElementVel = std::max_element(velocities.begin(), velocities.end());
-      // max_vel.push_back( *maxElementVel);
-      // std::cout <<"MAX VELOCITY of " << incoming_joint_name << " is " << *maxElementVel << std::endl;
-
-      // if(!traj_started[incoming_joint_name] && !traj_finished[incoming_joint_name]){
-      //   std::cout <<"MAX POSITION of " << incoming_joint_name << "is 0.0" << std::endl;
-      //   max_pos.push_back(0.0);
-
-      //   std::cout <<"MAX ACCEL of " << incoming_joint_name << " is 0.0" << std::endl;
-      //   max_accel.push_back( 0.0);
-
-      //   // std::cout <<"MAX VEL of " << incoming_joint_name << " is 0.0" << std::endl;
-      //   // max_vel.push_back(0.0);
-        
-      // }
-
       const std::string & incoming_joint_name = trajectory_msg_->joint_names[i];
-      std::vector<double> positions;
+      // std::vector<double> positions;
+      double maximum_position;
       std::vector<double> velocities;
       std::vector<double> accelerations;
 
@@ -320,6 +256,7 @@ bool Trajectory::sample_test(
 
             velocities.push_back(abs(p[j].velocities[i]));
             accelerations.push_back(abs(p[j].accelerations[i]));
+
           }
         }
 
@@ -328,12 +265,19 @@ bool Trajectory::sample_test(
           finish_floating_window_point_2 = abs(p[j+1].velocities[i]);
           finish_floating_window_point_3 = abs(p[j+2].velocities[i]);
 
-          if((finish_floating_window_point_3 < 0.0 + 10e-5) 
-            && (start_floating_window_point_3 < start_floating_window_point_2)
-            && (start_floating_window_point_2 < start_floating_window_point_1)){
+          // std::cout << "start_floating_window_point_1 " << start_floating_window_point_1 << std::endl;
+          // std::cout << "start_floating_window_point_2 " << start_floating_window_point_2 << std::endl;
+          // std::cout << "start_floating_window_point_3 " << start_floating_window_point_3 << std::endl;
+          
+
+          if((finish_floating_window_point_3 < 0.0 + 10e-3) 
+            && (finish_floating_window_point_3 < finish_floating_window_point_2)
+            && (finish_floating_window_point_2 < finish_floating_window_point_1)){
             //
             traj_finished = true;
             traj_started = false;
+
+            maximum_position = p[j+2].positions[i];
 
             velocities.push_back(abs(p[j].velocities[i]));
             velocities.push_back(abs(p[j+1].velocities[i]));
@@ -344,15 +288,17 @@ bool Trajectory::sample_test(
             accelerations.push_back(abs(p[j+2].accelerations[i]));
 
           }else{
+           
             velocities.push_back(abs(p[j].velocities[i]));
             accelerations.push_back(abs(p[j].accelerations[i]));
+            
 
           }
         }
 
         if(traj_finished && !traj_started){
 
-          auto maxElementPos =  p[j+2].velocities[i];
+          auto maxElementPos =  maximum_position;
           auto maxElementVel = std::max_element(velocities.begin(), velocities.end());
           auto maxElementAccel = std::max_element(accelerations.begin(), accelerations.end());
           
@@ -360,10 +306,15 @@ bool Trajectory::sample_test(
           current_joint_vel.push_back(*maxElementVel);
           current_joint_accel.push_back(*maxElementAccel);
 
+          std::cout << "traj adding " << incoming_joint_name << std::endl;
+          std::cout << "traj adding pos " << maxElementPos << std::endl;
+          std::cout << "traj adding vel " << *maxElementVel << std::endl;
+          std::cout << "traj adding accel " << *maxElementAccel << std::endl;
+
           traj_finished = false;
           traj_started = false;
 
-          positions.clear();
+          // positions.clear();
           velocities.clear();
           accelerations.clear();
 
@@ -371,10 +322,17 @@ bool Trajectory::sample_test(
 
         if(j == trajectory_msg_->points.size()-3){
           if(current_joint_vel.empty()){
+
+            std::cout << "traj empty adding " << incoming_joint_name << std::endl;
+            std::cout << "traj adding pos " << 0.0 << std::endl;
+            std::cout << "traj adding vel " << 0.0 << std::endl;
+            std::cout << "traj adding accel " << 0.0 << std::endl;
+
             current_joint_pos.push_back(0.0);
             current_joint_vel.push_back(0.0);
             current_joint_accel.push_back(0.0);
             current_joint_traj_start_time.push_back(p[0].time_from_start);
+
           }
         }
         
@@ -453,23 +411,45 @@ bool Trajectory::sample_test(
         interpolate_between_points(t0, point, t1, next_point, sample_time, output_state);
 
         output_state_parsed = output_state;
+
         for(size_t i = 0; i < max_vel.size(); ++i){// joints
+
+          // std::cout << "max vel size " << max_vel.size() << std::endl;
           //
           for(size_t j = 0; j < max_vel[i].size(); ++j){ // mulitple trapezoids for the joint
           //
             const rclcpp::Time traj_time = trajectory_start_time_ + traj_start_time[i][j];
 
+            // output_state_parsed = output_state;
+
             if(sample_time >= traj_time){
-              output_state_parsed.positions[i]= max_pos[i][j];
-              output_state_parsed.velocities[i]= max_vel[i][j];
-              output_state_parsed.accelerations[i]= max_accel[i][j];
 
+              // std::cout << "traj sending joint " << i << std::endl;
 
+              // std::cout << "traj update position " << max_pos[i][j] << std::endl;
+              // std::cout << "traj update velocitites " << max_vel[i][j] << std::endl;
+              // std::cout << "traj update accelerations " << max_accel[i][j] << std::endl;
+
+              final_positions[i] = max_pos[i][j];
+              final_velocities[i] = max_vel[i][j];
+              final_accelerations[i] = max_accel[i][j];
+
+              // std::cout << "output pos size " << output_state_parsed.positions.size() << std::endl;
+              // output_state_parsed.positions[i]= max_pos[i][j];
+              // std::cout << "output vel size " << output_state_parsed.velocities.size() << std::endl;
+              // output_state_parsed.velocities[i]= max_vel[i][j];
+              // std::cout << "output accel size " << output_state_parsed.accelerations.size() << std::endl;
+              // output_state_parsed.accelerations[i]= max_accel[i][j];
+              
             }
 
           }
 
         }
+
+        output_state_parsed.positions = final_positions;
+        output_state_parsed.velocities = final_velocities;
+        output_state_parsed.accelerations = final_accelerations;
 
         
         // output_state_parsed.positions = max_pos;
