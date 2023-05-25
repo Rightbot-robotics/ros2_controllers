@@ -198,6 +198,7 @@ bool Trajectory::sample_test(
     max_pos.clear();
     max_vel.clear();
     max_accel.clear();
+    traj_start_time.clear();
 
     bool traj_started;
     bool traj_finished;
@@ -240,6 +241,10 @@ bool Trajectory::sample_test(
         double finish_floating_window_point_2;
         double finish_floating_window_point_3;
 
+        // std::cout << "velocities " << incoming_joint_name << " is " <<  p[j].velocities[i]  << std::endl;
+        rclcpp::Duration time_temp = p[j].time_from_start; 
+        // std::cout << "time temp " << time_temp.seconds() << std::endl;
+
         if(!traj_started && !traj_finished){
 
           start_floating_window_point_1 = abs(p[j].velocities[i]);
@@ -251,8 +256,10 @@ bool Trajectory::sample_test(
             && (start_floating_window_point_3 > start_floating_window_point_2)){
             //
             traj_started = true;
-            rclcpp::Duration current_trapezoid_start_time = p[i].time_from_start;
+            rclcpp::Duration current_trapezoid_start_time = p[j].time_from_start;
             current_joint_traj_start_time.push_back(current_trapezoid_start_time); // traj start time
+            
+            std::cout << "traj start time for joint " << i << " is " << current_trapezoid_start_time.seconds() << std::endl;
 
             velocities.push_back(abs(p[j].velocities[i]));
             accelerations.push_back(abs(p[j].accelerations[i]));
@@ -286,6 +293,8 @@ bool Trajectory::sample_test(
             accelerations.push_back(abs(p[j].accelerations[i]));
             accelerations.push_back(abs(p[j+1].accelerations[i]));
             accelerations.push_back(abs(p[j+2].accelerations[i]));
+
+            std::cout << "traj finished " << std::endl;
 
           }else{
            
@@ -420,8 +429,9 @@ bool Trajectory::sample_test(
           //
             const rclcpp::Time traj_time = trajectory_start_time_ + traj_start_time[i][j];
 
-            // output_state_parsed = output_state;
-
+            rclcpp::Duration traj_time_temp = traj_start_time[i][j];
+            // std::cout << "traj start time for joint " << i << " is " << traj_time_temp.seconds() << std::endl;
+          
             if(sample_time >= traj_time){
 
               // std::cout << "traj sending joint " << i << std::endl;
@@ -429,6 +439,8 @@ bool Trajectory::sample_test(
               // std::cout << "traj update position " << max_pos[i][j] << std::endl;
               // std::cout << "traj update velocitites " << max_vel[i][j] << std::endl;
               // std::cout << "traj update accelerations " << max_accel[i][j] << std::endl;
+
+              
 
               final_positions[i] = max_pos[i][j];
               final_velocities[i] = max_vel[i][j];
@@ -440,22 +452,26 @@ bool Trajectory::sample_test(
               // output_state_parsed.velocities[i]= max_vel[i][j];
               // std::cout << "output accel size " << output_state_parsed.accelerations.size() << std::endl;
               // output_state_parsed.accelerations[i]= max_accel[i][j];
+
+              
               
             }
+            
 
           }
 
         }
 
+        active = true;
+
+        std::cout << "active in sample " << active << std::endl;
+
         output_state_parsed.positions = final_positions;
         output_state_parsed.velocities = final_velocities;
         output_state_parsed.accelerations = final_accelerations;
 
+        // std::cout << "traj sending joint " << i << std::endl;
         
-        // output_state_parsed.positions = max_pos;
-        // output_state_parsed.velocities = max_vel;
-        // output_state_parsed.accelerations = max_accel;
-        active = true;
       }
       start_segment_itr = begin() + i;
       end_segment_itr = begin() + (i + 1);
@@ -465,6 +481,8 @@ bool Trajectory::sample_test(
   }
 
   active = false;
+
+  std::cout << "active " << active << std::endl;
   // whole animation has played out
   start_segment_itr = --end();
   end_segment_itr = end();
