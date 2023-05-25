@@ -203,13 +203,19 @@ bool Trajectory::sample_test(
     bool traj_started;
     bool traj_finished;
 
-    final_positions.clear();
-    final_velocities.clear();
-    final_accelerations.clear();
+    if(!once){
 
-    final_positions.resize(trajectory_msg_->joint_names.size());
-    final_velocities.resize(trajectory_msg_->joint_names.size());
-    final_accelerations.resize(trajectory_msg_->joint_names.size());
+      final_positions.clear();
+      final_velocities.clear();
+      final_accelerations.clear();
+
+      final_positions.resize(trajectory_msg_->joint_names.size());
+      final_velocities.resize(trajectory_msg_->joint_names.size());
+      final_accelerations.resize(trajectory_msg_->joint_names.size());
+
+      once = true;
+
+    }
 
     for (size_t i = 0; i < trajectory_msg_->joint_names.size(); ++i)
     {
@@ -446,6 +452,8 @@ bool Trajectory::sample_test(
               final_velocities[i] = max_vel[i][j];
               final_accelerations[i] = max_accel[i][j];
 
+              
+
               // std::cout << "output pos size " << output_state_parsed.positions.size() << std::endl;
               // output_state_parsed.positions[i]= max_pos[i][j];
               // std::cout << "output vel size " << output_state_parsed.velocities.size() << std::endl;
@@ -464,13 +472,9 @@ bool Trajectory::sample_test(
 
         active = true;
 
-        std::cout << "active in sample " << active << std::endl;
-
         output_state_parsed.positions = final_positions;
         output_state_parsed.velocities = final_velocities;
         output_state_parsed.accelerations = final_accelerations;
-
-        // std::cout << "traj sending joint " << i << std::endl;
         
       }
       start_segment_itr = begin() + i;
@@ -482,7 +486,6 @@ bool Trajectory::sample_test(
 
   active = false;
 
-  std::cout << "active " << active << std::endl;
   // whole animation has played out
   start_segment_itr = --end();
   end_segment_itr = end();
