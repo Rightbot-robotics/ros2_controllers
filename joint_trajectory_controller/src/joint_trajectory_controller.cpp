@@ -191,7 +191,7 @@ controller_interface::return_type JointTrajectoryController::update(
     TrajectoryPointConstIter start_segment_itr, end_segment_itr;
     const bool valid_point =
       (*traj_point_active_ptr_)
-        ->sample_test(time, interpolation_method_, state_desired_, state_desired_parsed_, traj_active, start_segment_itr, end_segment_itr, is_empty_traj);
+        ->sample(time, interpolation_method_, state_desired_, start_segment_itr, end_segment_itr);
 
     // RCLCPP_INFO(get_node()->get_logger(), "traj active %d", traj_active);
     if (valid_point)
@@ -269,42 +269,22 @@ controller_interface::return_type JointTrajectoryController::update(
         // set values for next hardware write()
         if (has_position_command_interface_)
         {
-          if(traj_active){
-            assign_interface_from_point(joint_command_interface_[0], state_desired_parsed_.positions);
-          }
-          else{
-            // assign_interface_from_point(joint_command_interface_[0], state_desired_.positions);
-          }
-          
+          assign_interface_from_point(joint_command_interface_[0], state_desired_.positions);
         }
         if (has_velocity_command_interface_)
         {
           if (use_closed_loop_pid_adapter_)
           {
-            
             assign_interface_from_point(joint_command_interface_[1], tmp_command_);
           }
           else
           {
-
-            if(traj_active){
-              assign_interface_from_point(joint_command_interface_[1], state_desired_parsed_.velocities);
-            }
-            else{
-              // assign_interface_from_point(joint_command_interface_[1], state_desired_.velocities);
-            }
+            assign_interface_from_point(joint_command_interface_[1], state_desired_.velocities);
           }
         }
         if (has_acceleration_command_interface_)
         {
-
-          if(traj_active){
-            assign_interface_from_point(joint_command_interface_[2], state_desired_parsed_.accelerations);
-          }
-          else{
-            // assign_interface_from_point(joint_command_interface_[2], state_desired_.accelerations);
-          }
-
+          assign_interface_from_point(joint_command_interface_[2], state_desired_.accelerations);
         }
         if (has_effort_command_interface_)
         {
