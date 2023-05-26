@@ -257,7 +257,7 @@ bool Trajectory::sample_test(
           start_floating_window_point_2 = abs(p[j+1].velocities[i]);
           start_floating_window_point_3 = abs(p[j+2].velocities[i]);
 
-          if((start_floating_window_point_1 > 0.0 + 10e-6) 
+          if(((start_floating_window_point_1 == 0.0) || (start_floating_window_point_1 > 0.0 + 10e-6)) 
             && (start_floating_window_point_2 > start_floating_window_point_1)
             && (start_floating_window_point_3 > start_floating_window_point_2)){
             //
