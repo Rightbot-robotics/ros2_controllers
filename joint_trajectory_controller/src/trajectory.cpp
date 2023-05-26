@@ -247,7 +247,7 @@ bool Trajectory::sample_test(
         double finish_floating_window_point_2;
         double finish_floating_window_point_3;
 
-        // std::cout << "velocities " << incoming_joint_name << " is " <<  p[j].velocities[i]  << std::endl;
+        std::cout << "joint " << i << ", velocities: " <<  p[j].velocities[i]  << ",  positions: " <<  p[j].positions[i] << ", accelerations: " << p[j].accelerations[i] << std::endl;
         rclcpp::Duration time_temp = p[j].time_from_start; 
         // std::cout << "time temp " << time_temp.seconds() << std::endl;
 
@@ -257,7 +257,7 @@ bool Trajectory::sample_test(
           start_floating_window_point_2 = abs(p[j+1].velocities[i]);
           start_floating_window_point_3 = abs(p[j+2].velocities[i]);
 
-          if((start_floating_window_point_1 > 0.0 + 10e-5) 
+          if((start_floating_window_point_1 > 0.0 + 10e-6) 
             && (start_floating_window_point_2 > start_floating_window_point_1)
             && (start_floating_window_point_3 > start_floating_window_point_2)){
             //
@@ -283,7 +283,7 @@ bool Trajectory::sample_test(
           // std::cout << "start_floating_window_point_3 " << start_floating_window_point_3 << std::endl;
           
 
-          if((finish_floating_window_point_3 < 0.0 + 10e-3) 
+          if((finish_floating_window_point_3 < 0.0 + 10e-6) 
             && (finish_floating_window_point_3 < finish_floating_window_point_2)
             && (finish_floating_window_point_2 < finish_floating_window_point_1)){
             //
@@ -301,6 +301,9 @@ bool Trajectory::sample_test(
             accelerations.push_back(abs(p[j+2].accelerations[i]));
 
             std::cout << "traj finished " << std::endl;
+            std::cout << "joint " << i << ", velocities: " <<  p[j].velocities[i]  << ",  positions: " <<  p[j].positions[i] << ", accelerations: " << p[j].accelerations[i] << std::endl;
+            std::cout << "joint " << i << ", velocities: " <<  p[j+1].velocities[i]  << ",  positions: " <<  p[j+1].positions[i] << ", accelerations: " << p[j+1].accelerations[i] << std::endl;
+            std::cout << "joint " << i << ", velocities: " <<  p[j+2].velocities[i]  << ",  positions: " <<  p[j+2].positions[i] << ", accelerations: " << p[j+2].accelerations[i] << std::endl;
 
           }else{
            
