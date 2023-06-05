@@ -265,6 +265,8 @@ protected:
 
   bool read_state_from_command_interfaces(JointTrajectoryPoint & state);
 
+  bool check_state_limit_violations(JointTrajectoryPoint & state);
+
 private:
   bool contains_interface_type(
     const std::vector<std::string> & interface_type_list, const std::string & interface_type);
@@ -274,6 +276,11 @@ private:
 
   void get_max_velocities(
     std::shared_ptr<trajectory_msgs::msg::JointTrajectory> trajectory_msg);
+
+  std::vector<double> lower_joint_limits_;
+  std::vector<double> upper_joint_limits_;
+
+  bool joint_limit_tolerated = false;
 
 };
 

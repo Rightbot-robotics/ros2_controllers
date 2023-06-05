@@ -126,3 +126,15 @@ joint_trajectory_controller:
         default_value: 0.0,
         description: "Per-joint trajectory offset tolerance at the goal position.",
       }
+  joint_limits:
+    __map_joints: 
+      lower_limit: {
+        type: double,
+        default_value: 0.0,
+        description: "Per-joint trajectory offset tolerance during movement.",
+      }
+      upper_limit: {
+        type: double,
+        default_value: 0.0,
+        description: "Per-joint trajectory offset tolerance during movement.",
+      }
