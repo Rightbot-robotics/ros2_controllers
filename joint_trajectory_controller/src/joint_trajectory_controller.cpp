@@ -512,7 +512,7 @@ bool JointTrajectoryController::check_state_limit_violations(JointTrajectoryPoin
 
     if(state.positions[index]< lower_joint_limits_[index] || state.positions[index]> upper_joint_limits_[index]){
       limit_tolerated_status = true ;
-      RCLCPP_ERROR(get_node()->get_logger(), "Joint %d limit tolerated.", index);
+      RCLCPP_ERROR(get_node()->get_logger(), "Joint %d Limits: [%f, %f] tolerated. State value: [%f]", index, lower_joint_limits_[index], upper_joint_limits_[index], state.positions[index]);
     } 
   }
 
