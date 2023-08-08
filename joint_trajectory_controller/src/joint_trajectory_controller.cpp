@@ -27,8 +27,6 @@
 #include "builtin_interfaces/msg/duration.hpp"
 #include "builtin_interfaces/msg/time.hpp"
 #include "controller_interface/helpers.hpp"
-#include "hardware_interface/types/hardware_interface_return_values.hpp"
-#include "hardware_interface/types/hardware_interface_type_values.hpp"
 #include "joint_trajectory_controller/trajectory.hpp"
 #include "lifecycle_msgs/msg/state.hpp"
 #include "rclcpp/logging.hpp"
