@@ -14,7 +14,7 @@ endif()
 set(THIS_PACKAGE_INCLUDE_DEPENDS
     controller_interface
     generate_parameter_library
-    hardware_interface
+    rightbot_hardware_interface
     pluginlib
     rclcpp
     rclcpp_lifecycle

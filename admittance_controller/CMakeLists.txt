@@ -19,7 +19,7 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
   Eigen3
   generate_parameter_library
   geometry_msgs
-  hardware_interface
+  rightbot_hardware_interface
   joint_trajectory_controller
   pluginlib
   rclcpp

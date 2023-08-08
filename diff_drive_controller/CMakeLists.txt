@@ -14,7 +14,7 @@ endif()
 set(THIS_PACKAGE_INCLUDE_DEPENDS
     controller_interface
     geometry_msgs
-    hardware_interface
+    rightbot_hardware_interface
     nav_msgs
     pluginlib
     rclcpp

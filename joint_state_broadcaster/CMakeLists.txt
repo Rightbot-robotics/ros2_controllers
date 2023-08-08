@@ -66,7 +66,7 @@ install(
 if(BUILD_TESTING)
   find_package(ament_cmake_gmock REQUIRED)
   find_package(controller_manager REQUIRED)
-  find_package(hardware_interface REQUIRED)
+  find_package(rightbot_hardware_interface REQUIRED)
   find_package(rclcpp REQUIRED)
   find_package(ros2_control_test_assets REQUIRED)
 
@@ -77,7 +77,7 @@ if(BUILD_TESTING)
   target_include_directories(test_load_joint_state_broadcaster PRIVATE include)
   ament_target_dependencies(test_load_joint_state_broadcaster
     controller_manager
-    hardware_interface
+    rightbot_hardware_interface
     ros2_control_test_assets
   )
 

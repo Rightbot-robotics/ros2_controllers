@@ -14,7 +14,7 @@
   <depend>backward_ros</depend>
   <depend>controller_interface</depend>
   <depend>geometry_msgs</depend>
-  <depend>hardware_interface</depend>
+  <depend>rightbot_hardware_interface</depend>
   <depend>pluginlib</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_lifecycle</depend>
@@ -23,7 +23,7 @@
 
   <test_depend>ament_cmake_gmock</test_depend>
   <test_depend>controller_manager</test_depend>
-  <test_depend>hardware_interface</test_depend>
+  <test_depend>rightbot_hardware_interface</test_depend>
   <test_depend>ros2_control_test_assets</test_depend>
 
   <export>
