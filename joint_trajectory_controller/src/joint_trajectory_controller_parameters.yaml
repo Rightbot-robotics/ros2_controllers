@@ -21,7 +21,7 @@ joint_trajectory_controller:
     description: "Names of command interfaces to claim",
     validation: {
       unique<>: null,
-      subset_of<>: [["position", "velocity", "acceleration", "effort",]],
+      subset_of<>: [["position", "velocity", "acceleration", "effort", "control_state",]],
       command_interface_type_combinations: null,
     }
   }
@@ -31,7 +31,7 @@ joint_trajectory_controller:
     description: "Names of state interfaces to claim",
     validation: {
       unique<>: null,
-      subset_of<>: [["position", "velocity", "acceleration",]],
+      subset_of<>: [["position", "velocity", "acceleration", "effort",]],
       state_interface_type_combinations: null,
     }
   }

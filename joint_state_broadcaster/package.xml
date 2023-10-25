@@ -22,7 +22,7 @@
   <depend>control_msgs</depend>
   <depend>controller_interface</depend>
   <depend>generate_parameter_library</depend>
-  <depend>hardware_interface</depend>
+  <depend>rightbot_hardware_interface</depend>
   <depend>rclcpp_lifecycle</depend>
   <depend>realtime_tools</depend>
   <depend>sensor_msgs</depend>

@@ -43,6 +43,8 @@
 #include "realtime_tools/realtime_server_goal_handle.h"
 #include "trajectory_msgs/msg/joint_trajectory.hpp"
 #include "trajectory_msgs/msg/joint_trajectory_point.hpp"
+#include <hardware_interface/types/hardware_interface_return_values.hpp>
+#include <hardware_interface/types/hardware_interface_type_values.hpp>
 
 #include "joint_trajectory_controller_parameters.hpp"
 
@@ -116,17 +118,27 @@ public:
 protected:
   // To reduce number of variables and to make the code shorter the interfaces are ordered in types
   // as the following constants
+
+  std::vector<double> max_velocities_;
+  std::vector<double> control_state_;
+
   const std::vector<std::string> allowed_interface_types_ = {
     hardware_interface::HW_IF_POSITION,
     hardware_interface::HW_IF_VELOCITY,
     hardware_interface::HW_IF_ACCELERATION,
     hardware_interface::HW_IF_EFFORT,
+    hardware_interface::HW_IF_CONTROL_STATE
   };
 
   // Preallocate variables used in the realtime update() function
   trajectory_msgs::msg::JointTrajectoryPoint state_current_;
   trajectory_msgs::msg::JointTrajectoryPoint state_desired_;
   trajectory_msgs::msg::JointTrajectoryPoint state_error_;
+
+  //max pos parsed
+  trajectory_msgs::msg::JointTrajectoryPoint state_desired_parsed_;
+  bool traj_active;
+  bool is_empty_traj;
 
   // Degrees of freedom
   size_t dof_;
@@ -159,6 +171,7 @@ protected:
   bool has_velocity_command_interface_ = false;
   bool has_acceleration_command_interface_ = false;
   bool has_effort_command_interface_ = false;
+  bool has_control_state_command_interface_ = false;
 
   /// If true, a velocity feedforward term plus corrective PID term is used
   bool use_closed_loop_pid_adapter_ = false;
@@ -260,6 +273,10 @@ private:
 
   void resize_joint_trajectory_point(
     trajectory_msgs::msg::JointTrajectoryPoint & point, size_t size);
+
+  void get_max_velocities(
+    std::shared_ptr<trajectory_msgs::msg::JointTrajectory> trajectory_msg);
+
 };
 
 }  // namespace joint_trajectory_controller

@@ -23,7 +23,7 @@
   <depend>controller_interface</depend>
   <depend>control_msgs</depend>
   <depend>control_toolbox</depend>
-  <depend>hardware_interface</depend>
+  <depend>rightbot_hardware_interface</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_lifecycle</depend>
   <depend>trajectory_msgs</depend>
