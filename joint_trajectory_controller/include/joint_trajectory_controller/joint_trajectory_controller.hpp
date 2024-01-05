@@ -162,6 +162,7 @@ protected:
 
   /// If true, a velocity feedforward term plus corrective PID term is used
   bool use_closed_loop_pid_adapter_ = false;
+  bool open_loop_control_flag_set_ = true;
   using PidPtr = std::shared_ptr<control_toolbox::Pid>;
   std::vector<PidPtr> pids_;
   // Feed-forward velocity weight factor when calculating closed loop pid adapter's command

@@ -547,7 +547,7 @@ controller_interface::CallbackReturn JointTrajectoryController::on_configure(
   // if there is only velocity or if there is effort command interface
   // then use also PID adapter
   use_closed_loop_pid_adapter_ =
-    (has_velocity_command_interface_ && params_.command_interfaces.size() == 1) ||
+    (has_velocity_command_interface_ && params_.command_interfaces.size() == 1 && !open_loop_control_flag_set_) ||
     has_effort_command_interface_;
 
   if (use_closed_loop_pid_adapter_)
