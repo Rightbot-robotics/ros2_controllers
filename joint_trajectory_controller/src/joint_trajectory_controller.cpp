@@ -208,6 +208,7 @@ controller_interface::return_type JointTrajectoryController::update(
             state_error_, index, default_tolerances_.state_tolerance[index], false))
         {
           tolerance_violated_while_moving = true;
+	        RCLCPP_WARN(get_node()->get_logger(),"tolerance violated for joint: %s", command_joint_names_[index].c_str());
         }
         // past the final point, check that we end up inside goal tolerance
         if (
