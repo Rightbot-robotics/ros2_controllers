@@ -350,6 +350,14 @@ controller_interface::return_type JointTrajectoryController::update(
         RCLCPP_ERROR(get_node()->get_logger(), "Holding position due to state tolerance violation");
       }
     }
+    else {
+      // Send zero velocity dueing violation
+      std::vector<double> zero_vel(dof_, 0.0);
+      if (has_velocity_command_interface_)
+      {
+        assign_interface_from_point(joint_command_interface_[1], zero_vel);
+      }
+    }
   }
 
   publish_state(state_desired_, state_current_, state_error_);
