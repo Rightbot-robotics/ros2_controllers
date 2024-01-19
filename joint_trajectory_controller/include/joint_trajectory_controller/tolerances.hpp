@@ -91,7 +91,7 @@ struct SegmentTolerances
  * \param params The ROS Parameters
  * \return Trajectory segment tolerances.
  */
-SegmentTolerances get_segment_tolerances(Params const & params)
+SegmentTolerances get_segment_tolerances(Params & params)
 {
   auto const & constraints = params.constraints;
   auto const n_joints = params.joints.size();

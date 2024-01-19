@@ -654,35 +654,8 @@ controller_interface::CallbackReturn JointTrajectoryController::on_configure(
     logger, "Command interfaces are [%s] and state interfaces are [%s].",
     get_interface_list(params_.command_interfaces).c_str(),
     get_interface_list(params_.state_interfaces).c_str());
-  
-  {
-    auto const & constraints = params_.constraints;
-    auto const n_joints = params_.joints.size();
 
-    SegmentTolerances tolerances;
-    tolerances.goal_time_tolerance = constraints.goal_time;
-
-    // State and goal state tolerances
-    tolerances.state_tolerance.resize(n_joints);
-    tolerances.goal_state_tolerance.resize(n_joints);
-    for (size_t i = 0; i < n_joints; ++i)
-    {
-      auto const joint = params_.joints[i];
-      tolerances.state_tolerance[i].position = constraints.joints_map.at(joint).trajectory;
-      tolerances.goal_state_tolerance[i].position = constraints.joints_map.at(joint).goal;
-      tolerances.goal_state_tolerance[i].velocity = constraints.stopped_velocity_tolerance;
-
-      auto logger = rclcpp::get_logger("tolerance");
-      RCLCPP_DEBUG(
-        logger, "%s %f", (joint + ".trajectory").c_str(), tolerances.state_tolerance[i].position);
-      RCLCPP_DEBUG(
-        logger, "%s %f", (joint + ".goal").c_str(), tolerances.goal_state_tolerance[i].position);
-    }
-
-    default_tolerances_ = tolerances;
-  }
-
-  // default_tolerances_ = get_segment_tolerances(params_);
+  default_tolerances_ = get_segment_tolerances(params_);
 
 
   const std::string interpolation_string =
