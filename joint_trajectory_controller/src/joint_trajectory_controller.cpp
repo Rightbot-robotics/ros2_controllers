@@ -210,6 +210,14 @@ controller_interface::return_type JointTrajectoryController::update(
           tolerance_violated_while_moving = true;
 	        RCLCPP_WARN(get_node()->get_logger(),"tolerance violated for joint: %s", command_joint_names_[index].c_str());
         }
+        
+        if (
+          (before_last_point || first_sample) &&
+          (abs(state_error_.positions[index]) > 0.0)
+        ) {
+          RCLCPP_WARN(get_node()->get_logger(),"error for joint %s: %f", command_joint_names_[index].c_str(), state_error_.positions[index]);
+        }
+
         // past the final point, check that we end up inside goal tolerance
         if (
           !before_last_point &&
