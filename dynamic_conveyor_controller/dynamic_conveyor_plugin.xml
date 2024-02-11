@@ -1,0 +1,7 @@
+<library path="dynamic_conveyor_controller">
+  <class name="dynamic_conveyor_controller/DynamicConveyorController" type="dynamic_conveyor_controller::DynamicConveyorController" base_class_type="controller_interface::ControllerInterface">
+  <description>
+    The dynamic conveyor controller transforms the given height or angle request for the conveyor lift system in sherlock V2.0 into position command for each of the left and right lift gantry actuators. This controller is also capable of receiving the conveyor belt speed alteration commands and set the conveyor belt actuator speed accordingly.
+  </description>
+  </class>
+</library>
