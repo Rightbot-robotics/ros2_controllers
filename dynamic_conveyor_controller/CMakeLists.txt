@@ -11,6 +11,8 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
     pluginlib
     rclcpp
     rclcpp_lifecycle
+
+    rightbot_interfaces
 )
 
 # find dependencies
@@ -23,6 +25,7 @@ endforeach()
 # find_package(<dependency> REQUIRED)
 
 add_library(${PROJECT_NAME} SHARED
+  src/parameter_handler.cpp
   src/dynamic_conveyor_controller.cpp
 )
 target_include_directories(${PROJECT_NAME}
