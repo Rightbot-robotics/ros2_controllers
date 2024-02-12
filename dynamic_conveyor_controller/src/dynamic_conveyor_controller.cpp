@@ -35,6 +35,16 @@ controller_interface::return_type DynamicConveyorController::update(const rclcpp
 controller_interface::CallbackReturn DynamicConveyorController::on_configure(
     const rclcpp_lifecycle::State &) {
     RCLCPP_INFO(get_node()->get_logger(), "DynamicConveyorController::on_configure()");
+    ParameterHandler ph(get_node());
+    if(!ph.is_params_loaded()) {
+        RCLCPP_ERROR(get_node()->get_logger(), "Failed to load parameters");
+        return controller_interface::CallbackReturn::ERROR;
+    }
+    params_ = ph.get_parameters();
+    RCLCPP_INFO(get_node()->get_logger(), "left_lift_actuator_name: %s", params_.left_lift_actuator_name.c_str());
+    RCLCPP_INFO(get_node()->get_logger(), "right_lift_actuator_name: %s", params_.right_lift_actuator_name.c_str());
+    RCLCPP_INFO(get_node()->get_logger(), "belt_actuator_name: %s", params_.belt_actuator_name.c_str());
+    RCLCPP_INFO(get_node()->get_logger(), "initial_belt_speed_rpm: %f", params_.initial_belt_speed_rpm);
     return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -52,7 +62,7 @@ controller_interface::CallbackReturn DynamicConveyorController::on_deactivate(
 
 }  // namespace dynamic_conveyor_controller
 
-#include "class_loader/register_macro.hpp"
+#include "pluginlib/class_list_macros.hpp"
 
-CLASS_LOADER_REGISTER_CLASS(
+PLUGINLIB_EXPORT_CLASS(
   dynamic_conveyor_controller::DynamicConveyorController, controller_interface::ControllerInterface)

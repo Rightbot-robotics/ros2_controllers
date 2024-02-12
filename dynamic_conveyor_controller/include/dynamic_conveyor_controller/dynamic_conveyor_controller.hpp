@@ -5,6 +5,7 @@
 #include <string>
 
 #include "controller_interface/controller_interface.hpp"
+#include "dynamic_conveyor_controller/parameter_handler.hpp"
 
 
 namespace dynamic_conveyor_controller
@@ -40,6 +41,7 @@ public:
         const rclcpp_lifecycle::State & previous_state) override;
 
 protected:
+    Parameters params_;
 };
 
 }  // namespace dynamic_conveyor_controller

@@ -7,35 +7,53 @@
 #include "rclcpp_lifecycle/lifecycle_node.hpp"
 
 namespace dynamic_conveyor_controller {
-    struct Parameters {
-        std::string conveyor_lift_left_actuator_name;
-        double base_desired_linear_vel;
-        double max_linear_accel;
-        double max_jerk;
-        double min_approach_linear_velocity;
-        double min_linear_velocity;
-        double MIN_T;
-        double MAX_T;
-        double T_DT;
-        double S_MIN;
-        double controller_frequency;
-        double control_duration;
-        double lookahead_dist;
-        double transform_tolerance;
-        double pre_correction_timeout;
-    };
+struct Parameters {
+    std::string left_lift_actuator_name;
+    std::string right_lift_actuator_name;
+    std::string belt_actuator_name;
+    double initial_belt_speed_rpm;
+    double enc_to_dist_multiplication_factor;
+    double enc_to_distance_offset_factor;
+    double gantry_target_distance_tolerance;
+    double gantry_target_timeout;
+    double belt_target_velocity_tolerance;
+    double belt_target_velocity_window_time_ms;
+    double belt_target_timeout;
+};
 
-    
-    class ParameterHandler {
-        public:
-        ParameterHandler(rclcpp_lifecycle::LifecycleNode::SharedPtr node, std::string &plugin_name);
-        ~ParameterHandler() = default;
-        Parameters * getParameters() { return &params_; }
 
-        protected:
-        Parameters params_;
-        std::string plugin_name_;
-    };
+class ParameterHandler {
+    public:
+    ParameterHandler(rclcpp_lifecycle::LifecycleNode::SharedPtr node);
+    ~ParameterHandler() = default;
+    Parameters get_parameters() { return params_; }
+    bool load_parameters(rclcpp_lifecycle::LifecycleNode::SharedPtr node);
+    bool is_params_loaded() { return params_loaded_; }
+
+    protected:
+    Parameters params_;
+    std::string plugin_name_;
+    bool params_loaded_ = false;
+};
+
+template <typename ParamT>
+bool strict_get_parameter(
+    rclcpp_lifecycle::LifecycleNode::SharedPtr node,
+    const std::string param_name,
+    ParamT & param_value
+)
+{
+    bool param_available;
+    param_available = node->get_parameter(param_name, param_value);
+    if(!param_available) {
+        RCLCPP_ERROR(
+            node->get_logger(),
+            "Parameter %s not available, which is required",
+            param_name.c_str()
+        );
+    }
+    return param_available;
+}
 }
 
 #endif // DYNAMIC_CONVEYOR_CONTROLLER__PARAMETER_HANDLER_HPP_
