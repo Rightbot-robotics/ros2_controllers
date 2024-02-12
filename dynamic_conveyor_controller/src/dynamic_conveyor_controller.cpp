@@ -91,6 +91,81 @@ controller_interface::CallbackReturn DynamicConveyorController::on_deactivate(
     return controller_interface::CallbackReturn::SUCCESS;
 }
 
+void DynamicConveyorController::conveyor_command_service_callback(
+    rightbot_interfaces::srv::ConveyorCommand::Request::SharedPtr req,
+    rightbot_interfaces::srv::ConveyorCommand::Response::SharedPtr resp) {
+
+    using namespace rightbot_interfaces::srv;
+
+    uint32_t system_status_cp = 0;
+
+    switch(req->command_type) {
+        case ConveyorCommand::Request::SET_HEIGHT: {
+            double gantry_travel_distance = get_equation_result(req->command_value, height_cmd_inverse_kinematics_coeffs_);
+            left_gantry_target_distance_ = gantry_travel_distance - left_gantry_initial_offset_;
+            right_gantry_target_distance_ = gantry_travel_distance - right_gantry_initial_offset_;
+            lift_request_available_ = true;
+            break;
+        }
+        case ConveyorCommand::Request::SET_ANGLE: {
+            double gantry_travel_distance = get_equation_result(req->command_value, angle_cmd_inverse_kinematics_coeffs_);
+            left_gantry_target_distance_ = gantry_travel_distance - left_gantry_initial_offset_;
+            right_gantry_target_distance_ = gantry_travel_distance - right_gantry_initial_offset_;
+            lift_request_available_ = true;
+            break;
+        }
+        case ConveyorCommand::Request::SET_VELOCITY: {
+            target_belt_velocity_ = req->command_value;
+            last_commanded_belt_velocity_ = target_belt_velocity_;
+            if(system_status_cp & SystemStatus::BELT_RUNNING) {
+                belt_velocity_request_available_ = true;
+            }
+            break;
+        }
+        case ConveyorCommand::Request::START_BELT: {
+            target_belt_velocity_ = last_commanded_belt_velocity_;
+            belt_velocity_request_available_ = true;
+            break;
+        }
+        case ConveyorCommand::Request::STOP_BELT: {
+            target_belt_velocity_ = 0.0;
+            belt_velocity_request_available_ = true;
+            break;
+        }
+        case ConveyorCommand::Request::REALIGN_LEFT: {
+            realign_left_ = true;
+            realign_right_ = false;
+            realign_request_available_ = true;
+            break;
+        }
+        case ConveyorCommand::Request::REALIGN_RIGHT: {
+            realign_left_ = false;
+            realign_right_ = true;
+            realign_request_available_ = true;
+            break;
+        }
+        default:
+            resp->status = "INVALID_COMMAND_TYPE";
+            return;
+    }
+
+    {
+        std::unique_lock lk(response_wait_mutex_);
+        response_wait_cv_.wait(lk, [this]() { return response_string_ != ""; });
+        resp->status = response_string_;
+        response_string_ = "";
+    }
+}
+
+double DynamicConveyorController::get_equation_result(double x, std::vector<double> coeffs) {
+    double result = 0;
+    int degree = (int)coeffs.size();
+    for(int i = 0; i < degree; i++) {
+        result += coeffs[i] * pow(x, (degree-1-i));
+    }
+    return result;
+}
+
 }  // namespace dynamic_conveyor_controller
 
 #include "pluginlib/class_list_macros.hpp"

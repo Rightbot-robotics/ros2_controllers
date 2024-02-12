@@ -5,14 +5,24 @@
 #include <string>
 #include <memory>
 #include <map>
-#include <iostream>
+#include <condition_variable>
+#include <mutex>
+#include <cmath>
+
 
 #include "controller_interface/controller_interface.hpp"
 #include "dynamic_conveyor_controller/parameter_handler.hpp"
+#include "rightbot_interfaces/srv/conveyor_command.hpp"
+#include "rightbot_interfaces/msg/conveyor_status.hpp"
 
 
 namespace dynamic_conveyor_controller
 {
+
+enum SystemStatus : uint32_t {
+    CONVEYOR_OK = 1,
+    BELT_RUNNING = 2
+};
 
 template <typename T>
 bool get_loaned_interfaces(
@@ -63,10 +73,38 @@ public:
     controller_interface::CallbackReturn on_deactivate(
         const rclcpp_lifecycle::State & previous_state) override;
 
-protected:
+private:
     Parameters params_;
     std::map<std::string, std::reference_wrapper<hardware_interface::LoanedCommandInterface>> joint_command_interfaces_;
     std::map<std::string, std::reference_wrapper<hardware_interface::LoanedStateInterface>> joint_state_interfaces_;
+    std::vector<double> height_cmd_inverse_kinematics_coeffs_;
+    std::vector<double> angle_cmd_inverse_kinematics_coeffs_;
+    double get_equation_result(double x, std::vector<double> coeffs);
+
+    rclcpp::Service<rightbot_interfaces::srv::ConveyorCommand>::SharedPtr conveyor_commad_srv_;
+    std::string response_string_ = "";
+    std::mutex response_wait_mutex_;
+    std::condition_variable response_wait_cv_;
+    void conveyor_command_service_callback(
+        rightbot_interfaces::srv::ConveyorCommand::Request::SharedPtr req,
+        rightbot_interfaces::srv::ConveyorCommand::Response::SharedPtr resp
+    );
+
+    uint32_t system_status_ = 0;
+
+    double left_gantry_initial_offset_ = 0.0;
+    double right_gantry_initial_offset_ = 0.0;
+    double left_gantry_target_distance_ = 0.0;
+    double right_gantry_target_distance_ = 0.0;
+    bool lift_request_available_ = false;
+
+    double target_belt_velocity_ = 0.0;
+    double last_commanded_belt_velocity_ = 0.0;
+    double belt_velocity_request_available_ = false;
+
+    bool realign_left_ = false;
+    bool realign_right_ = false;
+    bool realign_request_available_ = false;
 };
 
 }  // namespace dynamic_conveyor_controller
