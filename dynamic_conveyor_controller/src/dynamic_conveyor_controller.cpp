@@ -12,18 +12,20 @@ controller_interface::CallbackReturn DynamicConveyorController::on_init() {
 }
 
 controller_interface::InterfaceConfiguration DynamicConveyorController::command_interface_configuration() const {
-    RCLCPP_INFO(get_node()->get_logger(), "DynamicConveyorController::command_interface_configuration()");
     std::vector<std::string> conf_names;
-    conf_names.push_back("gantry_left/position");
-    conf_names.push_back("gantry_right/position");
+    conf_names.push_back(params_.left_lift_actuator_name + "/" + "position");
+    conf_names.push_back(params_.right_lift_actuator_name + "/" + "position");
+    conf_names.push_back(params_.belt_actuator_name + "/" + "velocity");
     return {controller_interface::interface_configuration_type::INDIVIDUAL, conf_names};
 }
 
 controller_interface::InterfaceConfiguration DynamicConveyorController::state_interface_configuration() const {
-    RCLCPP_INFO(get_node()->get_logger(), "DynamicConveyorController::state_interface_configuration()");
     std::vector<std::string> conf_names;
-    conf_names.push_back("gantry_left/position");
-    conf_names.push_back("gantry_right/position");
+    conf_names.push_back(params_.left_lift_actuator_name + "/" + "position");
+    conf_names.push_back(params_.right_lift_actuator_name + "/" + "position");
+    conf_names.push_back(params_.left_encoder_sensor_name + "/" + "position");
+    conf_names.push_back(params_.right_encoder_sensor_name + "/" + "position");
+    conf_names.push_back(params_.belt_actuator_name + "/" + "velocity");
     return {controller_interface::interface_configuration_type::INDIVIDUAL, conf_names};
 }
 
@@ -41,16 +43,45 @@ controller_interface::CallbackReturn DynamicConveyorController::on_configure(
         return controller_interface::CallbackReturn::ERROR;
     }
     params_ = ph.get_parameters();
-    RCLCPP_INFO(get_node()->get_logger(), "left_lift_actuator_name: %s", params_.left_lift_actuator_name.c_str());
-    RCLCPP_INFO(get_node()->get_logger(), "right_lift_actuator_name: %s", params_.right_lift_actuator_name.c_str());
-    RCLCPP_INFO(get_node()->get_logger(), "belt_actuator_name: %s", params_.belt_actuator_name.c_str());
-    RCLCPP_INFO(get_node()->get_logger(), "initial_belt_speed_rpm: %f", params_.initial_belt_speed_rpm);
     return controller_interface::CallbackReturn::SUCCESS;
 }
 
 controller_interface::CallbackReturn DynamicConveyorController::on_activate(
     const rclcpp_lifecycle::State &) {
-    RCLCPP_INFO(get_node()->get_logger(), "DynamicConveyorController::on_activate()");
+    
+    // Acquiring command interfaces
+    std::vector<std::string> required_command_interfaces_name {
+        params_.left_lift_actuator_name + "/" + "position",
+        params_.right_lift_actuator_name + "/" + "position",
+        params_.belt_actuator_name + "/" + "velocity",
+        "hello"
+    };
+    if(!get_loaned_interfaces(
+        command_interfaces_,
+        required_command_interfaces_name,
+        joint_command_interfaces_
+    )) {
+        RCLCPP_ERROR(get_node()->get_logger(), "All the requested command interface is not found");
+        return controller_interface::CallbackReturn::ERROR;
+    }
+
+    // Acquiring state interfaces
+    std::vector<std::string> required_state_interfaces_name {
+        params_.left_lift_actuator_name + "/" + "position",
+        params_.right_lift_actuator_name + "/" + "position",
+        params_.left_encoder_sensor_name + "/" + "position",
+        params_.right_encoder_sensor_name + "/" + "position",
+        params_.belt_actuator_name + "/" + "velocity"
+    };
+    if(!get_loaned_interfaces(
+        state_interfaces_,
+        required_state_interfaces_name,
+        joint_state_interfaces_
+    )) {
+        RCLCPP_ERROR(get_node()->get_logger(), "All the requested state interface is not found");
+        return controller_interface::CallbackReturn::ERROR;
+    }
+
     return controller_interface::CallbackReturn::SUCCESS;
 }
 

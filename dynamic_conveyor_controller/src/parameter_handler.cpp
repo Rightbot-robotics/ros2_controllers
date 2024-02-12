@@ -13,6 +13,8 @@ bool ParameterHandler::load_parameters(rclcpp_lifecycle::LifecycleNode::SharedPt
     
     status_ok = status_ok && strict_get_parameter(node, "left_lift_actuator_name", params_.left_lift_actuator_name);
     status_ok = status_ok && strict_get_parameter(node, "right_lift_actuator_name", params_.right_lift_actuator_name);
+    status_ok = status_ok && strict_get_parameter(node, "left_encoder_sensor_name", params_.left_encoder_sensor_name);
+    status_ok = status_ok && strict_get_parameter(node, "right_encoder_sensor_name", params_.right_encoder_sensor_name);
     status_ok = status_ok && strict_get_parameter(node, "belt_actuator_name", params_.belt_actuator_name);
     status_ok = status_ok && strict_get_parameter(node, "enc_to_dist_multiplication_factor", params_.enc_to_dist_multiplication_factor);
     status_ok = status_ok && strict_get_parameter(node, "enc_to_distance_offset_factor", params_.enc_to_distance_offset_factor);

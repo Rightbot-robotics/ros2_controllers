@@ -3,6 +3,9 @@
 
 #include <vector>
 #include <string>
+#include <memory>
+#include <map>
+#include <iostream>
 
 #include "controller_interface/controller_interface.hpp"
 #include "dynamic_conveyor_controller/parameter_handler.hpp"
@@ -10,6 +13,26 @@
 
 namespace dynamic_conveyor_controller
 {
+
+template <typename T>
+bool get_loaned_interfaces(
+    std::vector<T> & available_interfaces,
+    const std::vector<std::string> & requested_interface_names,
+    std::map<std::string, std::reference_wrapper<T>> & interface_map
+) {
+    bool all_interface_found = true;
+    for(const auto & interface_name : requested_interface_names) {
+        bool found_current_interface = false;
+        for(auto & interface : available_interfaces) {
+            if(interface.get_name() == interface_name) {
+                interface_map.emplace(interface_name, std::ref(interface));
+                found_current_interface = true;
+            }
+        }
+        all_interface_found = all_interface_found && found_current_interface;
+    }
+    return all_interface_found;
+}
 
 class DynamicConveyorController
     : public controller_interface::ControllerInterface
@@ -42,6 +65,8 @@ public:
 
 protected:
     Parameters params_;
+    std::map<std::string, std::reference_wrapper<hardware_interface::LoanedCommandInterface>> joint_command_interfaces_;
+    std::map<std::string, std::reference_wrapper<hardware_interface::LoanedStateInterface>> joint_state_interfaces_;
 };
 
 }  // namespace dynamic_conveyor_controller

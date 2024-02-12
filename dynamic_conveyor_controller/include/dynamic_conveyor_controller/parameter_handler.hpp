@@ -10,6 +10,8 @@ namespace dynamic_conveyor_controller {
 struct Parameters {
     std::string left_lift_actuator_name;
     std::string right_lift_actuator_name;
+    std::string left_encoder_sensor_name;
+    std::string right_encoder_sensor_name;
     std::string belt_actuator_name;
     double initial_belt_speed_rpm;
     double enc_to_dist_multiplication_factor;
