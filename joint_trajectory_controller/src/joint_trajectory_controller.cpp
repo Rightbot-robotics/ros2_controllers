@@ -213,7 +213,7 @@ controller_interface::return_type JointTrajectoryController::update(
         
         if (
           (before_last_point || first_sample) &&
-          (abs(state_error_.positions[index]) > 0.0)
+          (abs(state_error_.positions[index]) > 0.05)
         ) {
           RCLCPP_WARN(get_node()->get_logger(),"error for joint %s: %f", command_joint_names_[index].c_str(), state_error_.positions[index]);
         }
