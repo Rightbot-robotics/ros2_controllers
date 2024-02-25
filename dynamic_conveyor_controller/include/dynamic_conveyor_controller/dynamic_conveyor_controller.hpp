@@ -87,8 +87,8 @@ private:
     Parameters params_;
     std::map<std::string, std::reference_wrapper<hardware_interface::LoanedCommandInterface>> joint_command_interfaces_;
     std::map<std::string, std::reference_wrapper<hardware_interface::LoanedStateInterface>> joint_state_interfaces_;
-    std::vector<double> height_cmd_inverse_kinematics_coeffs_;
-    std::vector<double> angle_cmd_inverse_kinematics_coeffs_;
+    std::vector<double> height_cmd_inverse_kinematics_coeffs_ = {1.0, 0.0};
+    std::vector<double> angle_cmd_inverse_kinematics_coeffs_ =  {1.0, 0.0};
 
     rclcpp::Service<rightbot_interfaces::srv::ConveyorCommand>::SharedPtr conveyor_commad_srv_;
     std::string response_string_ = "";
@@ -128,10 +128,12 @@ private:
     bool realign_left_ = false;
     bool realign_right_ = false;
     bool realign_request_available_ = false;
-    bool executing_realign_command_ = false;
     bool commanded_stop_ = false;
     bool previously_in_belt_velocity_window_ = false;
     bool relative_move_request_available_ = false;
+    bool is_sane_ = true;
+    bool was_sane_ = true;
+    bool check_sanity_ = true;
 
     rclcpp::Time lift_command_sent_time_;
     rclcpp::Time belt_command_sent_time_;
