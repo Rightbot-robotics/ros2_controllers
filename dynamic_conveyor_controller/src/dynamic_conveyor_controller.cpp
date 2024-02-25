@@ -8,6 +8,7 @@ DynamicConveyorController::DynamicConveyorController() : controller_interface::C
 
 controller_interface::CallbackReturn DynamicConveyorController::on_init() {
     RCLCPP_INFO(get_node()->get_logger(), "DynamicConveyorController::on_init()");
+    on_first_update_loop_ = true;
     return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -29,9 +30,151 @@ controller_interface::InterfaceConfiguration DynamicConveyorController::state_in
     return {controller_interface::interface_configuration_type::INDIVIDUAL, conf_names};
 }
 
-controller_interface::return_type DynamicConveyorController::update(const rclcpp::Time &, const rclcpp::Duration &) {
-    // RCLCPP_INFO(get_node()->get_logger(), "DynamicConveyorController::update()");
+controller_interface::return_type DynamicConveyorController::update(const rclcpp::Time & time, const rclcpp::Duration &) {
+    
+    left_encoder_angle_ = joint_state_interfaces_.at(params_.left_encoder_sensor_name + "/" + "position").get().get_value();
+    right_encoder_angle_ = joint_state_interfaces_.at(params_.right_encoder_sensor_name + "/" + "position").get().get_value();
+    left_gantry_raw_distance_ = joint_state_interfaces_.at(params_.left_lift_actuator_name + "/" + "position").get().get_value();
+    right_gantry_raw_distance_ = joint_state_interfaces_.at(params_.right_lift_actuator_name + "/" + "position").get().get_value();
+
+    left_encoder_distance_ = enc_angle_to_distance(left_encoder_angle_);
+    right_encoder_distance_ = enc_angle_to_distance(right_encoder_angle_);
+
+    if(on_first_update_loop_) {
+        left_gantry_initial_encoder_offset_ = left_encoder_distance_ - left_gantry_raw_distance_;
+        right_gantry_initial_encoder_offset_ = right_encoder_distance_ - right_gantry_raw_distance_;
+        on_first_update_loop_ = false;
+    }
+
+    left_gantry_distance_ = left_gantry_raw_distance_ + left_gantry_initial_encoder_offset_;
+    right_gantry_distance_ = right_gantry_raw_distance_ + right_gantry_initial_encoder_offset_;
+
+    if(!sanity_check() && !(realign_request_available_ || executing_realign_command_)) {
+        if(!commanded_stop_){
+            RCLCPP_ERROR(get_node()->get_logger(), "sanity check failed, commanding current position to lift actuators");
+            joint_command_interfaces_.at(params_.left_lift_actuator_name + "/" + "position").get().set_value(left_gantry_raw_distance_);
+            joint_command_interfaces_.at(params_.right_lift_actuator_name + "/" + "position").get().set_value(right_gantry_raw_distance_);
+            commanded_stop_ = true;
+        }
+        return controller_interface::return_type::OK;
+    }
+
+    if(realign_request_available_) {
+        realign_difference_ = right_encoder_distance_ - left_encoder_distance_ + left_minus_right_realign_offset_;
+        if(realign_left_) {
+            left_gantry_target_distance_ = left_gantry_raw_distance_ + realign_difference_;
+            right_gantry_target_distance_ = right_gantry_raw_distance_;
+        }
+        else if(realign_right_) {
+            right_gantry_target_distance_ = right_gantry_raw_distance_ - realign_difference_;
+            left_gantry_target_distance_ = left_gantry_raw_distance_;
+        }
+        realign_request_available_ = false;
+        executing_realign_command_ = true;
+        gantry_move_request_available_ = true;
+    }
+
+    if(relative_move_request_available_) {
+        left_gantry_target_distance_ = left_gantry_distance_ - left_gantry_initial_encoder_offset_ + relative_move_distance_;
+        right_gantry_target_distance_ = right_gantry_distance_ - right_gantry_initial_encoder_offset_ - left_minus_right_travel_offset_ + relative_move_distance_;
+        relative_move_request_available_ = false;
+        gantry_move_request_available_ = true;
+    }
+
+    if(gantry_move_request_available_) {
+        joint_command_interfaces_.at(params_.left_lift_actuator_name + "/" + "position").get().set_value(left_gantry_target_distance_);
+        joint_command_interfaces_.at(params_.right_lift_actuator_name + "/" + "position").get().set_value(right_gantry_target_distance_);
+        lift_command_sent_time_ = time;
+        gantry_move_request_available_ = false;
+        executing_gantry_move_command_ = true;
+        commanded_stop_ = false;
+    }
+    if(executing_gantry_move_command_) {
+        left_gantry_target_diff_ = left_gantry_target_distance_ - left_gantry_distance_;
+        right_gantry_target_diff_ = right_gantry_target_distance_ - right_gantry_distance_;
+        if(
+            std::abs(left_gantry_target_diff_) < params_.gantry_target_distance_tolerance &&
+            std::abs(right_gantry_target_diff_) < params_.gantry_target_distance_tolerance
+        ) {
+            executing_gantry_move_command_ = false;
+            executing_realign_command_ = false;
+            RCLCPP_INFO(get_node()->get_logger(), "gantry target achieved");
+            {
+                std::lock_guard lk(response_wait_mutex_);
+                response_string_ = "SUCCESS";
+            }
+            response_wait_cv_.notify_one();
+        }
+        else if (time - lift_command_sent_time_ > gantry_target_timeout_) {
+            executing_gantry_move_command_ = false;
+            executing_realign_command_ = false;
+            RCLCPP_ERROR(get_node()->get_logger(), "gantry target timeout");
+            {
+                std::lock_guard lk(response_wait_mutex_);
+                response_string_ = "TIMEOUT";
+            }
+            response_wait_cv_.notify_one();
+        }
+    }
+
+    if(belt_velocity_request_available_) {
+        joint_command_interfaces_.at(params_.belt_actuator_name + "/" + "velocity").get().set_value(target_belt_velocity_);
+        belt_command_sent_time_ = time;
+        belt_velocity_request_available_ = false;
+        executing_belt_velocity_command_ = true;
+        previously_in_belt_velocity_window_ = true;
+    }
+    if(executing_belt_velocity_command_) {
+        current_belt_velocity_ = joint_state_interfaces_.at(params_.belt_actuator_name + "/" + "velocity").get().get_value();
+        if(std::abs(target_belt_velocity_ - current_belt_velocity_) < params_.belt_target_velocity_tolerance) {
+            if(!previously_in_belt_velocity_window_) {
+                belt_velocity_window_enter_time_ = time;
+                previously_in_belt_velocity_window_ = true;
+            }
+            else {
+                if(time - belt_velocity_window_enter_time_ > belt_target_velocity_window_time_) {
+                    executing_belt_velocity_command_ = false;
+                    RCLCPP_INFO(get_node()->get_logger(), "belt target achieved");
+                    {
+                        std::lock_guard lk(response_wait_mutex_);
+                        response_string_ = "SUCCESS";
+                    }
+                    response_wait_cv_.notify_one();
+                }
+            }
+        }
+        else {
+            previously_in_belt_velocity_window_ = false;
+            if(time - belt_command_sent_time_ > belt_command_timeout_) {
+                executing_belt_velocity_command_ = false;
+                RCLCPP_ERROR(get_node()->get_logger(), "belt target timeout");
+                {
+                    std::lock_guard lk(response_wait_mutex_);
+                    response_string_ = "TIMEOUT";
+                }
+                response_wait_cv_.notify_one();
+            }
+        }
+    }
+
     return controller_interface::return_type::OK;
+}
+
+bool DynamicConveyorController::sanity_check() {
+    bool is_sane = true;
+    if(std::abs(left_encoder_distance_ - left_gantry_distance_) > params_.enc_to_gantry_sanity_tolerance) {
+        is_sane = false;
+        RCLCPP_ERROR(get_node()->get_logger(), "left encoder-gantry value mismatch: %f, %f", left_encoder_distance_, left_gantry_distance_);
+    }
+    if(std::abs(right_encoder_distance_ - right_gantry_distance_) > params_.enc_to_gantry_sanity_tolerance) {
+        is_sane = false;
+        RCLCPP_ERROR(get_node()->get_logger(), "right encoder-gantry value mismatch: %f, %f", right_encoder_distance_, right_gantry_distance_);
+    }
+    if(std::abs(left_encoder_distance_ - right_encoder_distance_ - left_minus_right_travel_offset_) > params_.enc_to_enc_sanity_tolerance) {
+        is_sane = false;
+        RCLCPP_ERROR(get_node()->get_logger(), "left_encoder-right_encoder value mismatch: %f, %f", left_encoder_distance_, right_encoder_distance_);
+    }
+    return is_sane;
 }
 
 controller_interface::CallbackReturn DynamicConveyorController::on_configure(
@@ -43,6 +186,10 @@ controller_interface::CallbackReturn DynamicConveyorController::on_configure(
         return controller_interface::CallbackReturn::ERROR;
     }
     params_ = ph.get_parameters();
+    gantry_target_timeout_ = std::chrono::duration<double>(params_.gantry_target_timeout);
+    belt_target_velocity_window_time_ = std::chrono::duration<double>(params_.belt_target_velocity_window_time_ms / 1000.0);
+    belt_command_timeout_ = std::chrono::duration<double>(params_.belt_target_timeout);
+    left_minus_right_travel_offset_ = params_.left_minus_right_travel_offset;
     return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -53,8 +200,7 @@ controller_interface::CallbackReturn DynamicConveyorController::on_activate(
     std::vector<std::string> required_command_interfaces_name {
         params_.left_lift_actuator_name + "/" + "position",
         params_.right_lift_actuator_name + "/" + "position",
-        params_.belt_actuator_name + "/" + "velocity",
-        "hello"
+        params_.belt_actuator_name + "/" + "velocity"
     };
     if(!get_loaned_interfaces(
         command_interfaces_,
@@ -102,22 +248,22 @@ void DynamicConveyorController::conveyor_command_service_callback(
     switch(req->command_type) {
         case ConveyorCommand::Request::SET_HEIGHT: {
             double gantry_travel_distance = get_equation_result(req->command_value, height_cmd_inverse_kinematics_coeffs_);
-            left_gantry_target_distance_ = gantry_travel_distance - left_gantry_initial_offset_;
-            right_gantry_target_distance_ = gantry_travel_distance - right_gantry_initial_offset_;
-            lift_request_available_ = true;
+            left_gantry_target_distance_ = gantry_travel_distance - left_gantry_initial_encoder_offset_;
+            right_gantry_target_distance_ = gantry_travel_distance - right_gantry_initial_encoder_offset_ - left_minus_right_travel_offset_;
+            gantry_move_request_available_ = true;
             break;
         }
         case ConveyorCommand::Request::SET_ANGLE: {
             double gantry_travel_distance = get_equation_result(req->command_value, angle_cmd_inverse_kinematics_coeffs_);
-            left_gantry_target_distance_ = gantry_travel_distance - left_gantry_initial_offset_;
-            right_gantry_target_distance_ = gantry_travel_distance - right_gantry_initial_offset_;
-            lift_request_available_ = true;
+            left_gantry_target_distance_ = gantry_travel_distance - left_gantry_initial_encoder_offset_;
+            right_gantry_target_distance_ = gantry_travel_distance - right_gantry_initial_encoder_offset_ - left_minus_right_travel_offset_;
+            gantry_move_request_available_ = true;
             break;
         }
         case ConveyorCommand::Request::SET_VELOCITY: {
             target_belt_velocity_ = req->command_value;
             last_commanded_belt_velocity_ = target_belt_velocity_;
-            if(system_status_cp & SystemStatus::BELT_RUNNING) {
+            if(system_status_cp & SystemStatus::BELT_RUNNING != 0) {
                 belt_velocity_request_available_ = true;
             }
             break;
@@ -144,6 +290,15 @@ void DynamicConveyorController::conveyor_command_service_callback(
             realign_request_available_ = true;
             break;
         }
+        case ConveyorCommand::Request::SET_OFFSET: {
+            left_minus_right_travel_offset_ = req->command_value;
+            break;
+        }
+        case ConveyorCommand::Request::MOVE_GANTRY_RELATIVE: {
+            relative_move_distance_ = req->command_value;
+            relative_move_request_available_ = true;
+            break;
+        }
         default:
             resp->status = "INVALID_COMMAND_TYPE";
             return;
@@ -164,6 +319,10 @@ double DynamicConveyorController::get_equation_result(double x, std::vector<doub
         result += coeffs[i] * pow(x, (degree-1-i));
     }
     return result;
+}
+
+double DynamicConveyorController::enc_angle_to_distance(double angle) {
+    return angle * params_.enc_to_dist_multiplication_factor + params_.enc_to_dist_offset_factor;
 }
 
 }  // namespace dynamic_conveyor_controller

@@ -15,12 +15,15 @@ struct Parameters {
     std::string belt_actuator_name;
     double initial_belt_speed_rpm;
     double enc_to_dist_multiplication_factor;
-    double enc_to_distance_offset_factor;
+    double enc_to_dist_offset_factor;
     double gantry_target_distance_tolerance;
     double gantry_target_timeout;
     double belt_target_velocity_tolerance;
     double belt_target_velocity_window_time_ms;
     double belt_target_timeout;
+    double enc_to_gantry_sanity_tolerance;
+    double enc_to_enc_sanity_tolerance;
+    double left_minus_right_travel_offset;
 };
 
 
