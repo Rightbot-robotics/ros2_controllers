@@ -60,7 +60,7 @@ controller_interface::return_type DynamicConveyorController::update(const rclcpp
     }
 
     if(realign_request_available_) {
-        realign_difference_ = right_encoder_distance_ - left_encoder_distance_ + left_minus_right_realign_offset_;
+        realign_difference_ = right_encoder_distance_ - left_encoder_distance_ + left_minus_right_travel_offset_;
         if(realign_left_) {
             left_gantry_target_distance_ = left_gantry_raw_distance_ + realign_difference_;
             right_gantry_target_distance_ = right_gantry_raw_distance_;
@@ -228,12 +228,23 @@ controller_interface::CallbackReturn DynamicConveyorController::on_activate(
         return controller_interface::CallbackReturn::ERROR;
     }
 
+    // Creating services
+    conveyor_commad_srv_ = get_node()->create_service<rightbot_interfaces::srv::ConveyorCommand>(
+        "conveyor_command",
+        std::bind(
+            &DynamicConveyorController::conveyor_command_service_callback,
+            this,
+            std::placeholders::_1,
+            std::placeholders::_2
+        )
+    );
+
     return controller_interface::CallbackReturn::SUCCESS;
 }
 
 controller_interface::CallbackReturn DynamicConveyorController::on_deactivate(
     const rclcpp_lifecycle::State &) {
-    RCLCPP_INFO(get_node()->get_logger(), "DynamicConveyorController::on_deactivate()");
+    conveyor_commad_srv_.reset();
     return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -263,7 +274,7 @@ void DynamicConveyorController::conveyor_command_service_callback(
         case ConveyorCommand::Request::SET_VELOCITY: {
             target_belt_velocity_ = req->command_value;
             last_commanded_belt_velocity_ = target_belt_velocity_;
-            if(system_status_cp & SystemStatus::BELT_RUNNING != 0) {
+            if((system_status_cp & SystemStatus::BELT_RUNNING) != 0) {
                 belt_velocity_request_available_ = true;
             }
             break;
