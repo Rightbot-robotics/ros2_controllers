@@ -81,6 +81,7 @@ private:
         rightbot_interfaces::srv::ConveyorCommand::Request::SharedPtr req,
         rightbot_interfaces::srv::ConveyorCommand::Response::SharedPtr resp
     );
+    bool wait_until_command_acknowledged();
 
 
     Parameters params_;
@@ -133,6 +134,8 @@ private:
     bool is_sane_ = true;
     bool was_sane_ = true;
     bool check_sanity_ = true;
+    bool command_available_ = false;
+    bool command_acknowledged_ = false;
 
     rclcpp::Time lift_command_sent_time_;
     rclcpp::Time belt_command_sent_time_;

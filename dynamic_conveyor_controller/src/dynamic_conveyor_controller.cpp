@@ -31,6 +31,11 @@ controller_interface::InterfaceConfiguration DynamicConveyorController::state_in
 }
 
 controller_interface::return_type DynamicConveyorController::update(const rclcpp::Time & time, const rclcpp::Duration &) {
+
+    if(command_available_) {
+        command_acknowledged_ = true;
+        command_available_ = false;
+    }
     
     left_encoder_angle_ = joint_state_interfaces_.at(params_.left_encoder_sensor_name + "/" + "position").get().get_value();
     right_encoder_angle_ = joint_state_interfaces_.at(params_.right_encoder_sensor_name + "/" + "position").get().get_value();
@@ -352,9 +357,7 @@ void DynamicConveyorController::conveyor_command_service_callback(
             return;
     }
 
-    if(req->command_type == ConveyorCommand::Request::REALIGN_LEFT || req->command_type == ConveyorCommand::Request::REALIGN_RIGHT) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));  // wait till ignore sanity check and command the actuator
-    }
+    wait_until_command_acknowledged();
 
     {
         std::unique_lock lk(response_wait_mutex_);
@@ -376,6 +379,15 @@ double DynamicConveyorController::get_equation_result(double x, std::vector<doub
 
 double DynamicConveyorController::enc_angle_to_distance(double angle) {
     return angle * params_.enc_to_dist_multiplication_factor + params_.enc_to_dist_offset_factor;
+}
+
+bool DynamicConveyorController::wait_until_command_acknowledged() {
+    command_available_ = true;
+    command_acknowledged_ = false;
+    while(!command_acknowledged_) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+    return true;
 }
 
 }  // namespace dynamic_conveyor_controller
