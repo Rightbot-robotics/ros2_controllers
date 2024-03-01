@@ -361,6 +361,7 @@ void DynamicConveyorController::conveyor_command_service_callback(
 
     {
         std::unique_lock lk(response_wait_mutex_);
+        response_string_ = "";
         response_wait_cv_.wait(lk, [this]() { return response_string_ != ""; });
         resp->status = response_string_;
         response_string_ = "";
