@@ -14,7 +14,6 @@
 #include "controller_interface/controller_interface.hpp"
 #include "dynamic_conveyor_controller/parameter_handler.hpp"
 #include "rightbot_interfaces/srv/conveyor_command.hpp"
-#include "rightbot_interfaces/msg/conveyor_status.hpp"
 
 
 namespace dynamic_conveyor_controller
