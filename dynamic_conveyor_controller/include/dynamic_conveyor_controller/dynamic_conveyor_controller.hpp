@@ -14,6 +14,7 @@
 #include "controller_interface/controller_interface.hpp"
 #include "dynamic_conveyor_controller/parameter_handler.hpp"
 #include "rightbot_interfaces/srv/conveyor_command.hpp"
+#include "rightbot_interfaces/msg/conveyor_state.hpp"
 
 
 namespace dynamic_conveyor_controller
@@ -94,6 +95,9 @@ private:
     std::string response_string_ = "";
     std::mutex response_wait_mutex_;
     std::condition_variable response_wait_cv_;
+
+    std::shared_ptr<rclcpp::Publisher<rightbot_interfaces::msg::ConveyorState>> state_pub_;
+    rightbot_interfaces::msg::ConveyorState state_msg_;
 
     uint32_t system_status_ = 0;
 

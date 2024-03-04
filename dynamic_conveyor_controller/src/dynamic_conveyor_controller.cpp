@@ -16,11 +16,9 @@ controller_interface::InterfaceConfiguration DynamicConveyorController::command_
     std::vector<std::string> conf_names;
     conf_names.push_back(params_.left_lift_actuator_name + "/" + "position");
     conf_names.push_back(params_.right_lift_actuator_name + "/" + "position");
+    conf_names.push_back(params_.left_lift_actuator_name + "/" + "control_state");
+    conf_names.push_back(params_.right_lift_actuator_name + "/" + "control_state");
     conf_names.push_back(params_.belt_actuator_name + "/" + "velocity");
-    conf_names.push_back("front_left_swerve_joint/position");
-    conf_names.push_back("front_right_swerve_joint/position");
-    conf_names.push_back("front_left_hub_joint/position");
-    conf_names.push_back("front_right_hub_joint/position");
     return {controller_interface::interface_configuration_type::INDIVIDUAL, conf_names};
 }
 
@@ -59,16 +57,20 @@ controller_interface::return_type DynamicConveyorController::update(const rclcpp
     left_gantry_distance_ = left_gantry_raw_distance_ + left_gantry_initial_encoder_offset_;
     right_gantry_distance_ = right_gantry_raw_distance_ + right_gantry_initial_encoder_offset_;
 
-    joint_command_interfaces_.at("front_left_swerve_joint/position").get().set_value(left_encoder_distance_);
-    joint_command_interfaces_.at("front_right_swerve_joint/position").get().set_value(right_encoder_distance_);
-    joint_command_interfaces_.at("front_left_hub_joint/position").get().set_value(left_gantry_distance_);
-    joint_command_interfaces_.at("front_right_hub_joint/position").get().set_value(right_gantry_distance_);
+    state_msg_.left_to_right_commanded_offset = left_minus_right_travel_offset_;
+    state_msg_.left_to_right_actual_offset = (left_encoder_distance_ - right_encoder_distance_);
+    state_msg_.left_encoder_distance = left_encoder_distance_;
+    state_msg_.left_actuator_distance = left_gantry_distance_;
+    state_msg_.right_encoder_distance = right_encoder_distance_;
+    state_msg_.right_actuator_distance = right_gantry_distance_;
+
+    state_pub_->publish(state_msg_);
 
     if(check_sanity_ && !sanity_check()) {
         if(!commanded_stop_){
             RCLCPP_ERROR(get_node()->get_logger(), "sanity check failed, commanding current position as target");
-            joint_command_interfaces_.at(params_.left_lift_actuator_name + "/" + "position").get().set_value(left_gantry_raw_distance_);
-            joint_command_interfaces_.at(params_.right_lift_actuator_name + "/" + "position").get().set_value(right_gantry_raw_distance_);
+            joint_command_interfaces_.at(params_.left_lift_actuator_name + "/" + "control_state").get().set_value(2.0);
+            joint_command_interfaces_.at(params_.right_lift_actuator_name + "/" + "control_state").get().set_value(2.0);
             commanded_stop_ = true;
         }
         {
@@ -232,11 +234,9 @@ controller_interface::CallbackReturn DynamicConveyorController::on_activate(
     std::vector<std::string> required_command_interfaces_name {
         params_.left_lift_actuator_name + "/" + "position",
         params_.right_lift_actuator_name + "/" + "position",
-        params_.belt_actuator_name + "/" + "velocity",
-        "front_left_swerve_joint/position",
-        "front_right_swerve_joint/position",
-        "front_left_hub_joint/position",
-        "front_right_hub_joint/position"
+        params_.left_lift_actuator_name + "/" + "control_state",
+        params_.right_lift_actuator_name + "/" + "control_state",
+        params_.belt_actuator_name + "/" + "velocity"
     };
     if(!get_loaned_interfaces(
         command_interfaces_,
@@ -275,12 +275,16 @@ controller_interface::CallbackReturn DynamicConveyorController::on_activate(
         )
     );
 
+    // State publisher
+    state_pub_ = get_node()->create_publisher<rightbot_interfaces::msg::ConveyorState>("conveyor_state", rclcpp::SystemDefaultsQoS());
+
     return controller_interface::CallbackReturn::SUCCESS;
 }
 
 controller_interface::CallbackReturn DynamicConveyorController::on_deactivate(
     const rclcpp_lifecycle::State &) {
     conveyor_commad_srv_.reset();
+    state_pub_.reset();
     return controller_interface::CallbackReturn::SUCCESS;
 }
 
