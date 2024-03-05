@@ -27,6 +27,7 @@ bool ParameterHandler::load_parameters(rclcpp_lifecycle::LifecycleNode::SharedPt
     node->get_parameter_or("enc_to_gantry_sanity_tolerance", params_.enc_to_gantry_sanity_tolerance, 0.0001);
     node->get_parameter_or("enc_to_enc_sanity_tolerance", params_.enc_to_enc_sanity_tolerance, 0.0001);
     node->get_parameter_or("left_minus_right_travel_offset", params_.left_minus_right_travel_offset, 0.0);
+    node->get_parameter_or("final_moveback_distance", params_.final_moveback_distance, 0.0005);
     
     return status_ok;
 }

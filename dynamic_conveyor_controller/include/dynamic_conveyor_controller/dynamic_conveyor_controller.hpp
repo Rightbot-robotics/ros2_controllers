@@ -119,14 +119,18 @@ private:
     double realign_difference_;
     double left_minus_right_travel_offset_;
     double relative_move_distance_;
+    double left_final_moveback_distance_;
+    double right_final_moveback_distance_;
 
 
+    double gantry_travel_distance_;
     double left_gantry_target_distance_;
     double right_gantry_target_distance_;
     
     bool on_first_update_loop_ = true;
     bool gantry_move_request_available_ = false;
     bool executing_gantry_move_command_ = false;
+    bool gantry_lift_request_available_ = false;
     bool belt_velocity_request_available_ = false;
     bool executing_belt_velocity_command_ = false;
     bool realign_left_ = false;

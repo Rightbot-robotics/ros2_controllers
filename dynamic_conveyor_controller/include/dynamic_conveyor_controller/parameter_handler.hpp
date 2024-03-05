@@ -24,6 +24,7 @@ struct Parameters {
     double enc_to_gantry_sanity_tolerance;
     double enc_to_enc_sanity_tolerance;
     double left_minus_right_travel_offset;
+    double final_moveback_distance;
 };
 
 
