@@ -61,8 +61,12 @@ controller_interface::return_type DynamicConveyorController::update(const rclcpp
     state_msg_.left_to_right_actual_offset = (left_encoder_distance_ - right_encoder_distance_);
     state_msg_.left_encoder_distance = left_encoder_distance_;
     state_msg_.left_actuator_distance = left_gantry_distance_;
+    state_msg_.left_actuator_current_position = left_gantry_raw_distance_;
+    state_msg_.left_actuator_target_position = left_gantry_target_distance_;
     state_msg_.right_encoder_distance = right_encoder_distance_;
     state_msg_.right_actuator_distance = right_gantry_distance_;
+    state_msg_.right_actuator_current_position = right_gantry_raw_distance_;
+    state_msg_.right_actuator_target_position = right_gantry_target_distance_;
 
     state_pub_->publish(state_msg_);
 
@@ -129,6 +133,8 @@ controller_interface::return_type DynamicConveyorController::update(const rclcpp
         ) {
             executing_gantry_move_command_ = false;
             RCLCPP_INFO(get_node()->get_logger(), "gantry target achieved");
+            joint_command_interfaces_.at(params_.left_lift_actuator_name + "/" + "position").get().set_value(left_gantry_target_distance_ - 0.0005);
+            joint_command_interfaces_.at(params_.right_lift_actuator_name + "/" + "position").get().set_value(right_gantry_target_distance_ - 0.0005);
             {
                 std::lock_guard lk(response_wait_mutex_);
                 response_string_ = "SUCCESS";
@@ -380,11 +386,10 @@ void DynamicConveyorController::conveyor_command_service_callback(
     {
         std::unique_lock lk(response_wait_mutex_);
         response_string_ = "";
-        while(response_string_ == "") {
+        while(response_string_.length() == 0) {
             response_wait_cv_.wait_for(lk, std::chrono::milliseconds(100), [this]() { return response_string_ != ""; });
         }
         resp->status = response_string_;
-        response_string_ = "";
     }
     check_sanity_ = true;
 }
