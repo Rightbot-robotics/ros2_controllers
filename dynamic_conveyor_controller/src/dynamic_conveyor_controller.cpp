@@ -280,6 +280,7 @@ controller_interface::CallbackReturn DynamicConveyorController::on_configure(
     belt_target_velocity_window_time_ = std::chrono::duration<double>(params_.belt_target_velocity_window_time_ms / 1000.0);
     belt_command_timeout_ = std::chrono::duration<double>(params_.belt_target_timeout);
     left_minus_right_travel_offset_ = params_.left_minus_right_travel_offset;
+    last_commanded_belt_velocity_ = params_.initial_belt_speed_rpm;
     return controller_interface::CallbackReturn::SUCCESS;
 }
 

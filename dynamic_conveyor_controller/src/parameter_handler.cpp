@@ -18,7 +18,7 @@ bool ParameterHandler::load_parameters(rclcpp_lifecycle::LifecycleNode::SharedPt
     status_ok = status_ok && strict_get_parameter(node, "belt_actuator_name", params_.belt_actuator_name);
     status_ok = status_ok && strict_get_parameter(node, "enc_to_dist_multiplication_factor", params_.enc_to_dist_multiplication_factor);
     status_ok = status_ok && strict_get_parameter(node, "enc_to_dist_offset_factor", params_.enc_to_dist_offset_factor);
-    node->get_parameter_or("initial_belt_speed_rpm", params_.initial_belt_speed_rpm, 200.0);
+    node->get_parameter_or("initial_belt_speed_rpm", params_.initial_belt_speed_rpm, 0.08);
     node->get_parameter_or("gantry_target_distance_tolerance", params_.gantry_target_distance_tolerance, 0.0005);
     node->get_parameter_or("gantry_target_timeout", params_.gantry_target_timeout, 20.0);
     node->get_parameter_or("belt_target_velocity_tolerance", params_.belt_target_velocity_tolerance, 10.0);
