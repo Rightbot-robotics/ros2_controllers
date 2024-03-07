@@ -368,7 +368,11 @@ void DynamicConveyorController::conveyor_command_service_callback(
     switch(req->command_type) {
         case ConveyorCommand::Request::SET_HEIGHT: {
             RCLCPP_INFO(get_node()->get_logger(), "Height command received: %f", req->command_value);
-            gantry_travel_distance_ = get_equation_result(req->command_value, height_cmd_inverse_kinematics_coeffs_);
+            gantry_travel_distance_ = get_travel_from_height(req->command_value);
+            if(gantry_travel_distance_ < 0.22 || gantry_travel_distance_ > 0.72) {
+                resp->status = "REQUEST_OUT_OF_TRAVEL_RANGE";
+                return;
+            }
             gantry_lift_request_available_ = true;
             check_sanity_ = true;
             break;
@@ -376,6 +380,10 @@ void DynamicConveyorController::conveyor_command_service_callback(
         case ConveyorCommand::Request::SET_ANGLE: {
             RCLCPP_INFO(get_node()->get_logger(), "Angle command received: %f", req->command_value);
             gantry_travel_distance_ = get_equation_result(req->command_value, angle_cmd_inverse_kinematics_coeffs_);
+            if(gantry_travel_distance_ < 0.22 || gantry_travel_distance_ > 0.28) {
+                resp->status = "REQUEST_OUT_OF_TRAVEL_RANGE";
+                return;
+            }
             gantry_lift_request_available_ = true;
             check_sanity_ = true;
             break;
