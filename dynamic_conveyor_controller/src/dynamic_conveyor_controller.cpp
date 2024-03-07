@@ -155,6 +155,8 @@ controller_interface::return_type DynamicConveyorController::update(const rclcpp
         RCLCPP_INFO(get_node()->get_logger(), "relative move request available");
         left_gantry_target_distance_ = left_gantry_distance_ - left_gantry_initial_encoder_offset_ + relative_move_distance_;
         right_gantry_target_distance_ = right_gantry_distance_ - right_gantry_initial_encoder_offset_ + relative_move_distance_;
+
+        gantry_travel_distance_ = left_gantry_target_distance_ + left_gantry_initial_encoder_offset_;
         
         if(left_gantry_target_distance_ > left_gantry_raw_distance_) {
             left_final_moveback_distance_ = params_.final_moveback_distance;
@@ -170,6 +172,15 @@ controller_interface::return_type DynamicConveyorController::update(const rclcpp
         RCLCPP_INFO(get_node()->get_logger(), "relative move target distances: L:%f, R:%f", left_gantry_target_distance_, right_gantry_target_distance_);
         relative_move_request_available_ = false;
         gantry_move_request_available_ = true;
+        if(gantry_travel_distance_ < 0.22 || gantry_travel_distance_ > 0.72) {
+            RCLCPP_ERROR(get_node()->get_logger(), "request not within travel limit range");
+            {
+                std::lock_guard lk(response_wait_mutex_);
+                response_string_ = "REQUEST_OUT_OF_TRAVEL_RANGE";
+            }
+            response_wait_cv_.notify_one();
+            gantry_move_request_available_ = false;
+        }
     }
 
     if(gantry_move_request_available_) {
@@ -370,6 +381,7 @@ void DynamicConveyorController::conveyor_command_service_callback(
             RCLCPP_INFO(get_node()->get_logger(), "Height command received: %f", req->command_value);
             gantry_travel_distance_ = get_travel_from_height(req->command_value);
             if(gantry_travel_distance_ < 0.22 || gantry_travel_distance_ > 0.72) {
+                RCLCPP_ERROR(get_node()->get_logger(), "height request not within travel limit range");
                 resp->status = "REQUEST_OUT_OF_TRAVEL_RANGE";
                 return;
             }
@@ -381,6 +393,7 @@ void DynamicConveyorController::conveyor_command_service_callback(
             RCLCPP_INFO(get_node()->get_logger(), "Angle command received: %f", req->command_value);
             gantry_travel_distance_ = get_travel_from_angle(req->command_value);
             if(gantry_travel_distance_ < 0.22 || gantry_travel_distance_ > 0.28) {
+                RCLCPP_ERROR(get_node()->get_logger(), "angle request not within travel limit range");
                 resp->status = "REQUEST_OUT_OF_TRAVEL_RANGE";
                 return;
             }
