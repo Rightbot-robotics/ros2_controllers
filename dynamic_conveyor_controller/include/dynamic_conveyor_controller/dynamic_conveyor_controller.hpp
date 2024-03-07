@@ -84,6 +84,7 @@ private:
     );
     bool wait_until_command_acknowledged();
     double get_travel_from_height(double height);
+    double get_travel_from_angle(double angle);
 
 
     Parameters params_;

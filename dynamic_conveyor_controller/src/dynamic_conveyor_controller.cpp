@@ -90,7 +90,7 @@ controller_interface::return_type DynamicConveyorController::update(const rclcpp
         return controller_interface::return_type::OK;
     }
 
-    if(comanded_stop_) {
+    if(commanded_stop_) {
         RCLCPP_INFO(get_node()->get_logger(), "Setting conveyor lift motors to normal mode");
         joint_command_interfaces_.at(params_.left_lift_actuator_name + "/" + "control_state").get().set_value(0.0);
         joint_command_interfaces_.at(params_.right_lift_actuator_name + "/" + "control_state").get().set_value(0.0);
@@ -379,7 +379,7 @@ void DynamicConveyorController::conveyor_command_service_callback(
         }
         case ConveyorCommand::Request::SET_ANGLE: {
             RCLCPP_INFO(get_node()->get_logger(), "Angle command received: %f", req->command_value);
-            gantry_travel_distance_ = get_equation_result(req->command_value, angle_cmd_inverse_kinematics_coeffs_);
+            gantry_travel_distance_ = get_travel_from_angle(req->command_value);
             if(gantry_travel_distance_ < 0.22 || gantry_travel_distance_ > 0.28) {
                 resp->status = "REQUEST_OUT_OF_TRAVEL_RANGE";
                 return;
@@ -485,6 +485,13 @@ bool DynamicConveyorController::wait_until_command_acknowledged() {
 
 double DynamicConveyorController::get_travel_from_height(double height) {
     double theta = std::asin((height - 0.598) / 2.952) - (2.75 * (PI_ / 180));
+    double alpha = std::asin((0.598 + (1.785 * std::sin(theta)))/1.2);
+    double travel = (1.785 * std::cos(theta)) + (1.2 * std::cos(alpha)) - 0.354;
+    return travel;
+}
+
+double DynamicConveyorController::get_travel_from_angle(double angle) {
+    double theta = angle - 0.00559;
     double alpha = std::asin((0.598 + (1.785 * std::sin(theta)))/1.2);
     double travel = (1.785 * std::cos(theta)) + (1.2 * std::cos(alpha)) - 0.354;
     return travel;
