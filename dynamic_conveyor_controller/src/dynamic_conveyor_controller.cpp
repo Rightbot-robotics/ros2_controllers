@@ -386,8 +386,6 @@ void DynamicConveyorController::conveyor_command_service_callback(
                 resp->status = "REQUEST_OUT_OF_TRAVEL_RANGE";
                 return;
             }
-            resp->status = "UNDER_TESTING";
-            return;
             gantry_lift_request_available_ = true;
             check_sanity_ = true;
             break;
@@ -401,8 +399,6 @@ void DynamicConveyorController::conveyor_command_service_callback(
                 resp->status = "REQUEST_OUT_OF_TRAVEL_RANGE";
                 return;
             }
-            resp->status = "UNDER_TESTING";
-            return;
             gantry_lift_request_available_ = true;
             check_sanity_ = true;
             break;
