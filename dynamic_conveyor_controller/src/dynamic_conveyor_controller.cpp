@@ -91,9 +91,14 @@ controller_interface::return_type DynamicConveyorController::update(const rclcpp
     }
 
     if(commanded_stop_) {
-        RCLCPP_INFO(get_node()->get_logger(), "Setting conveyor lift motors to normal mode");
+        if(check_sanity_) {
+            RCLCPP_INFO(get_node()->get_logger(), "Setting conveyor lift motors to normal mode without recovery");
+        } else {
+            RCLCPP_INFO(get_node()->get_logger(), "Setting conveyor lift motors to normal mode with recovery");
+        }
         joint_command_interfaces_.at(params_.left_lift_actuator_name + "/" + "control_state").get().set_value(0.0);
         joint_command_interfaces_.at(params_.right_lift_actuator_name + "/" + "control_state").get().set_value(0.0);
+        commanded_stop_ = false;
     }
 
     if(gantry_lift_request_available_) {
@@ -197,7 +202,6 @@ controller_interface::return_type DynamicConveyorController::update(const rclcpp
     if(executing_gantry_move_command_) {
         left_gantry_target_diff_ = left_gantry_target_distance_ - left_gantry_raw_distance_;
         right_gantry_target_diff_ = right_gantry_target_distance_ - right_gantry_raw_distance_;
-        RCLCPP_INFO(get_node()->get_logger(), "gantry target diff: L:%f, R:%f", left_gantry_target_diff_, right_gantry_target_diff_);
         if(
             std::abs(left_gantry_target_diff_) < params_.gantry_target_distance_tolerance &&
             std::abs(right_gantry_target_diff_) < params_.gantry_target_distance_tolerance
@@ -386,6 +390,10 @@ void DynamicConveyorController::conveyor_command_service_callback(
                 resp->status = "REQUEST_OUT_OF_TRAVEL_RANGE";
                 return;
             }
+            {
+                std::lock_guard lk(response_wait_mutex_);
+                response_string_ = "";
+            }
             gantry_lift_request_available_ = true;
             check_sanity_ = true;
             break;
@@ -394,10 +402,14 @@ void DynamicConveyorController::conveyor_command_service_callback(
             RCLCPP_INFO(get_node()->get_logger(), "Angle command received: %f", req->command_value);
             gantry_travel_distance_ = get_travel_from_angle(req->command_value);
             RCLCPP_INFO(get_node()->get_logger(), "Calculated travel: %f", gantry_travel_distance_);
-            if(gantry_travel_distance_ < 0.22 || gantry_travel_distance_ > 0.28) {
+            if(gantry_travel_distance_ < 0.22 || gantry_travel_distance_ > 0.72) {
                 RCLCPP_ERROR(get_node()->get_logger(), "angle request not within travel limit range, calculated travel: %f", gantry_travel_distance_);
                 resp->status = "REQUEST_OUT_OF_TRAVEL_RANGE";
                 return;
+            }
+            {
+                std::lock_guard lk(response_wait_mutex_);
+                response_string_ = "";
             }
             gantry_lift_request_available_ = true;
             check_sanity_ = true;
@@ -414,17 +426,29 @@ void DynamicConveyorController::conveyor_command_service_callback(
                 resp->status = "SUCCESS";
                 return;
             }
+            {
+                std::lock_guard lk(response_wait_mutex_);
+                response_string_ = "";
+            }
             break;
         }
         case ConveyorCommand::Request::START_BELT: {
             RCLCPP_INFO(get_node()->get_logger(), "Start belt command received");
             target_belt_velocity_ = last_commanded_belt_velocity_;
+            {
+                std::lock_guard lk(response_wait_mutex_);
+                response_string_ = "";
+            }
             belt_velocity_request_available_ = true;
             break;
         }
         case ConveyorCommand::Request::STOP_BELT: {
             RCLCPP_INFO(get_node()->get_logger(), "Stop belt command received");
             target_belt_velocity_ = 0.0;
+            {
+                std::lock_guard lk(response_wait_mutex_);
+                response_string_ = "";
+            }
             belt_velocity_request_available_ = true;
             break;
         }
@@ -432,6 +456,10 @@ void DynamicConveyorController::conveyor_command_service_callback(
             RCLCPP_INFO(get_node()->get_logger(), "Realign left command received");
             realign_left_ = true;
             realign_right_ = false;
+            {
+                std::lock_guard lk(response_wait_mutex_);
+                response_string_ = "";
+            }
             realign_request_available_ = true;
             check_sanity_ = false;
             break;
@@ -440,6 +468,10 @@ void DynamicConveyorController::conveyor_command_service_callback(
             RCLCPP_INFO(get_node()->get_logger(), "Realign right command received");
             realign_left_ = false;
             realign_right_ = true;
+            {
+                std::lock_guard lk(response_wait_mutex_);
+                response_string_ = "";
+            }
             realign_request_available_ = true;
             check_sanity_ = false;
             break;
@@ -454,6 +486,10 @@ void DynamicConveyorController::conveyor_command_service_callback(
         case ConveyorCommand::Request::MOVE_GANTRY_RELATIVE: {
             RCLCPP_INFO(get_node()->get_logger(), "Move gantry relative command received: %f", req->command_value);
             relative_move_distance_ = req->command_value;
+            {
+                std::lock_guard lk(response_wait_mutex_);
+                response_string_ = "";
+            }
             relative_move_request_available_ = true;
             check_sanity_ = true;
             break;
@@ -467,7 +503,6 @@ void DynamicConveyorController::conveyor_command_service_callback(
 
     {
         std::unique_lock lk(response_wait_mutex_);
-        response_string_ = "";
         while(response_string_.length() == 0) {
             response_wait_cv_.wait_for(lk, std::chrono::milliseconds(100), [this]() { return response_string_ != ""; });
         }
@@ -500,6 +535,7 @@ bool DynamicConveyorController::wait_until_command_acknowledged() {
 
 double DynamicConveyorController::get_travel_from_height(double height) {
     double theta = std::asin((height - 0.598) / 2.952) - (2.75 * (PI_ / 180));
+    RCLCPP_INFO(get_node()->get_logger(), "theta: %f", theta);
     double alpha = std::asin((0.598 + (1.785 * std::sin(theta)))/1.2);
     double travel = (1.785 * std::cos(theta)) - (1.2 * std::cos(alpha)) - 0.354;
     return travel;
@@ -507,6 +543,7 @@ double DynamicConveyorController::get_travel_from_height(double height) {
 
 double DynamicConveyorController::get_travel_from_angle(double angle) {
     double theta = angle - 0.00559;
+    RCLCPP_INFO(get_node()->get_logger(), "theta: %f", theta);
     double alpha = std::asin((0.598 + (1.785 * std::sin(theta)))/1.2);
     double travel = (1.785 * std::cos(theta)) - (1.2 * std::cos(alpha)) - 0.354;
     return travel;
