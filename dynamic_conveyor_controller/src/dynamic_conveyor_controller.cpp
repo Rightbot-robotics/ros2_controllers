@@ -379,7 +379,7 @@ void DynamicConveyorController::conveyor_command_service_callback(
     switch(req->command_type) {
         case ConveyorCommand::Request::SET_HEIGHT: {
             RCLCPP_INFO(get_node()->get_logger(), "Height command received: %f", req->command_value);
-            gantry_travel_distance_ = get_travel_from_height(req->command_value - 0.4);
+            gantry_travel_distance_ = get_travel_from_height(req->command_value - 0.39);
             RCLCPP_INFO(get_node()->get_logger(), "Calculated travel: %f", gantry_travel_distance_);
             if(gantry_travel_distance_ < 0.22 || gantry_travel_distance_ > 0.72) {
                 RCLCPP_ERROR(get_node()->get_logger(), "height request not within travel limit range, calculated travel: %f", gantry_travel_distance_);
@@ -505,14 +505,14 @@ bool DynamicConveyorController::wait_until_command_acknowledged() {
 double DynamicConveyorController::get_travel_from_height(double height) {
     double theta = std::asin((height - 0.598) / 2.952) - (2.75 * (PI_ / 180));
     double alpha = std::asin((0.598 + (1.785 * std::sin(theta)))/1.2);
-    double travel = (1.785 * std::cos(theta)) + (1.2 * std::cos(alpha)) - 0.354;
+    double travel = (1.785 * std::cos(theta)) - (1.2 * std::cos(alpha)) - 0.354;
     return travel;
 }
 
 double DynamicConveyorController::get_travel_from_angle(double angle) {
     double theta = angle - 0.00559;
     double alpha = std::asin((0.598 + (1.785 * std::sin(theta)))/1.2);
-    double travel = (1.785 * std::cos(theta)) + (1.2 * std::cos(alpha)) - 0.354;
+    double travel = (1.785 * std::cos(theta)) - (1.2 * std::cos(alpha)) - 0.354;
     return travel;
 }
 
