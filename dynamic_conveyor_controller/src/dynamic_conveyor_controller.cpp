@@ -9,6 +9,10 @@ DynamicConveyorController::DynamicConveyorController() : controller_interface::C
 controller_interface::CallbackReturn DynamicConveyorController::on_init() {
     RCLCPP_INFO(get_node()->get_logger(), "DynamicConveyorController::on_init()");
     on_first_update_loop_ = true;
+    left_encoder_angle_ = std::nan("");
+    right_encoder_angle_ = std::nan("");
+    left_gantry_raw_distance_ = std::nan("");
+    right_gantry_raw_distance_ = std::nan("");
     return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -43,6 +47,10 @@ controller_interface::return_type DynamicConveyorController::update(const rclcpp
     right_encoder_angle_ = joint_state_interfaces_.at(params_.right_encoder_sensor_name + "/" + "position").get().get_value();
     left_gantry_raw_distance_ = joint_state_interfaces_.at(params_.left_lift_actuator_name + "/" + "position").get().get_value();
     right_gantry_raw_distance_ = joint_state_interfaces_.at(params_.right_lift_actuator_name + "/" + "position").get().get_value();
+
+    if(on_first_update_loop_ && !initial_values_valid()) {
+        return controller_interface::return_type::OK;
+    }
 
     left_encoder_distance_ = enc_angle_to_distance(left_encoder_angle_);
     right_encoder_distance_ = enc_angle_to_distance(right_encoder_angle_);
@@ -547,6 +555,26 @@ double DynamicConveyorController::get_travel_from_angle(double angle) {
     double alpha = std::asin((0.598 + (1.785 * std::sin(theta)))/1.2);
     double travel = (1.785 * std::cos(theta)) - (1.2 * std::cos(alpha)) - 0.354;
     return travel;
+}
+
+bool DynamicConveyorController::initial_values_valid() {
+    if(
+        std::isnan(left_encoder_angle_) ||
+        std::isnan(right_encoder_angle_) ||
+        std::isnan(left_gantry_raw_distance_) ||
+        std::isnan(right_gantry_raw_distance_)
+    ) {
+        return false;
+    }
+
+    if(
+        std::abs(left_encoder_angle_) < 1e-9 ||
+        std::abs(right_encoder_angle_) < 1e-9
+    ) {
+        return false;
+    }
+
+    return true;
 }
 
 }  // namespace dynamic_conveyor_controller
