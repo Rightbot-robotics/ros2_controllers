@@ -50,6 +50,8 @@ controller_interface::return_type DynamicConveyorController::update(const rclcpp
     if(on_first_update_loop_) {
         left_gantry_initial_encoder_offset_ = left_encoder_distance_ - left_gantry_raw_distance_;
         right_gantry_initial_encoder_offset_ = right_encoder_distance_ - right_gantry_raw_distance_;
+        left_gantry_target_distance_ = left_gantry_raw_distance_;
+        right_gantry_target_distance_ = right_gantry_raw_distance_;
         RCLCPP_INFO(get_node()->get_logger(), "Initial encoder offsets: %f, %f", left_gantry_initial_encoder_offset_, right_gantry_initial_encoder_offset_);
         on_first_update_loop_ = false;
     }
@@ -86,6 +88,12 @@ controller_interface::return_type DynamicConveyorController::update(const rclcpp
         relative_move_request_available_ = false;
         executing_gantry_move_command_ = false;
         return controller_interface::return_type::OK;
+    }
+
+    if(comanded_stop_) {
+        RCLCPP_INFO(get_node()->get_logger(), "Setting conveyor lift motors to normal mode");
+        joint_command_interfaces_.at(params_.left_lift_actuator_name + "/" + "control_state").get().set_value(0.0);
+        joint_command_interfaces_.at(params_.right_lift_actuator_name + "/" + "control_state").get().set_value(0.0);
     }
 
     if(gantry_lift_request_available_) {
@@ -165,9 +173,11 @@ controller_interface::return_type DynamicConveyorController::update(const rclcpp
     }
 
     if(gantry_move_request_available_) {
+        left_gantry_target_distance_ += left_final_moveback_distance_;
+        right_gantry_target_distance_ += right_final_moveback_distance_;
         RCLCPP_INFO(get_node()->get_logger(), "gantry target distance: L:%f, R:%f", left_gantry_target_distance_, right_gantry_target_distance_);
-        joint_command_interfaces_.at(params_.left_lift_actuator_name + "/" + "position").get().set_value(left_gantry_target_distance_ + left_final_moveback_distance_);
-        joint_command_interfaces_.at(params_.right_lift_actuator_name + "/" + "position").get().set_value(right_gantry_target_distance_ + right_final_moveback_distance_);
+        joint_command_interfaces_.at(params_.left_lift_actuator_name + "/" + "position").get().set_value(left_gantry_target_distance_);
+        joint_command_interfaces_.at(params_.right_lift_actuator_name + "/" + "position").get().set_value(right_gantry_target_distance_);
         lift_command_sent_time_ = time;
         gantry_move_request_available_ = false;
         executing_gantry_move_command_ = true;
@@ -183,6 +193,8 @@ controller_interface::return_type DynamicConveyorController::update(const rclcpp
         ) {
             executing_gantry_move_command_ = false;
             RCLCPP_INFO(get_node()->get_logger(), "gantry target achieved");
+            left_gantry_target_distance_ -= left_final_moveback_distance_;
+            right_gantry_target_distance_ -= right_final_moveback_distance_;
             joint_command_interfaces_.at(params_.left_lift_actuator_name + "/" + "position").get().set_value(left_gantry_target_distance_);
             joint_command_interfaces_.at(params_.right_lift_actuator_name + "/" + "position").get().set_value(right_gantry_target_distance_);
             {
