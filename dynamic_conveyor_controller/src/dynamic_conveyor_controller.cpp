@@ -173,7 +173,7 @@ controller_interface::return_type DynamicConveyorController::update(const rclcpp
         relative_move_request_available_ = false;
         gantry_move_request_available_ = true;
         if(gantry_travel_distance_ < 0.22 || gantry_travel_distance_ > 0.72) {
-            RCLCPP_ERROR(get_node()->get_logger(), "request not within travel limit range");
+            RCLCPP_ERROR(get_node()->get_logger(), "relative move request not within travel limit range, calculated travel: %f", gantry_travel_distance_);
             {
                 std::lock_guard lk(response_wait_mutex_);
                 response_string_ = "REQUEST_OUT_OF_TRAVEL_RANGE";
@@ -381,7 +381,7 @@ void DynamicConveyorController::conveyor_command_service_callback(
             RCLCPP_INFO(get_node()->get_logger(), "Height command received: %f", req->command_value);
             gantry_travel_distance_ = get_travel_from_height(req->command_value);
             if(gantry_travel_distance_ < 0.22 || gantry_travel_distance_ > 0.72) {
-                RCLCPP_ERROR(get_node()->get_logger(), "height request not within travel limit range");
+                RCLCPP_ERROR(get_node()->get_logger(), "height request not within travel limit range, calculated travel: %f", gantry_travel_distance_);
                 resp->status = "REQUEST_OUT_OF_TRAVEL_RANGE";
                 return;
             }
@@ -393,7 +393,7 @@ void DynamicConveyorController::conveyor_command_service_callback(
             RCLCPP_INFO(get_node()->get_logger(), "Angle command received: %f", req->command_value);
             gantry_travel_distance_ = get_travel_from_angle(req->command_value);
             if(gantry_travel_distance_ < 0.22 || gantry_travel_distance_ > 0.28) {
-                RCLCPP_ERROR(get_node()->get_logger(), "angle request not within travel limit range");
+                RCLCPP_ERROR(get_node()->get_logger(), "angle request not within travel limit range, calculated travel: %f", gantry_travel_distance_);
                 resp->status = "REQUEST_OUT_OF_TRAVEL_RANGE";
                 return;
             }
