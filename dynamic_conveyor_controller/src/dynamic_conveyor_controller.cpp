@@ -379,12 +379,15 @@ void DynamicConveyorController::conveyor_command_service_callback(
     switch(req->command_type) {
         case ConveyorCommand::Request::SET_HEIGHT: {
             RCLCPP_INFO(get_node()->get_logger(), "Height command received: %f", req->command_value);
-            gantry_travel_distance_ = get_travel_from_height(req->command_value);
+            gantry_travel_distance_ = get_travel_from_height(req->command_value - 0.4);
+            RCLCPP_INFO(get_node()->get_logger(), "Calculated travel: %f", gantry_travel_distance_);
             if(gantry_travel_distance_ < 0.22 || gantry_travel_distance_ > 0.72) {
                 RCLCPP_ERROR(get_node()->get_logger(), "height request not within travel limit range, calculated travel: %f", gantry_travel_distance_);
                 resp->status = "REQUEST_OUT_OF_TRAVEL_RANGE";
                 return;
             }
+            resp->status = "UNDER_TESTING";
+            return;
             gantry_lift_request_available_ = true;
             check_sanity_ = true;
             break;
@@ -392,11 +395,14 @@ void DynamicConveyorController::conveyor_command_service_callback(
         case ConveyorCommand::Request::SET_ANGLE: {
             RCLCPP_INFO(get_node()->get_logger(), "Angle command received: %f", req->command_value);
             gantry_travel_distance_ = get_travel_from_angle(req->command_value);
+            RCLCPP_INFO(get_node()->get_logger(), "Calculated travel: %f", gantry_travel_distance_);
             if(gantry_travel_distance_ < 0.22 || gantry_travel_distance_ > 0.28) {
                 RCLCPP_ERROR(get_node()->get_logger(), "angle request not within travel limit range, calculated travel: %f", gantry_travel_distance_);
                 resp->status = "REQUEST_OUT_OF_TRAVEL_RANGE";
                 return;
             }
+            resp->status = "UNDER_TESTING";
+            return;
             gantry_lift_request_available_ = true;
             check_sanity_ = true;
             break;
