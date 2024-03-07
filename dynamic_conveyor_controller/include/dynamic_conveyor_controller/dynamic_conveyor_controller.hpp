@@ -83,6 +83,7 @@ private:
         rightbot_interfaces::srv::ConveyorCommand::Response::SharedPtr resp
     );
     bool wait_until_command_acknowledged();
+    double get_travel_from_height(double height);
 
 
     Parameters params_;
@@ -100,6 +101,8 @@ private:
     rightbot_interfaces::msg::ConveyorState state_msg_;
 
     uint32_t system_status_ = 0;
+
+    const double PI_ = 3.141592653589793;
 
     double left_encoder_angle_;
     double right_encoder_angle_;

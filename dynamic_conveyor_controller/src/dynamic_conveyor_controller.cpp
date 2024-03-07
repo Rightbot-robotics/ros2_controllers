@@ -475,6 +475,13 @@ bool DynamicConveyorController::wait_until_command_acknowledged() {
     return true;
 }
 
+double DynamicConveyorController::get_travel_from_height(double height) {
+    double theta = std::asin((height - 0.598) / 2.952) - (2.75 * (PI_ / 180));
+    double alpha = std::asin((0.598 + (1.785 * std::sin(theta)))/1.2);
+    double travel = (1.785 * std::cos(theta)) + (1.2 * std::cos(alpha)) - 0.354;
+    return travel;
+}
+
 }  // namespace dynamic_conveyor_controller
 
 #include "pluginlib/class_list_macros.hpp"
