@@ -23,6 +23,7 @@ controller_interface::InterfaceConfiguration DynamicConveyorController::command_
     conf_names.push_back(params_.left_lift_actuator_name + "/" + "control_state");
     conf_names.push_back(params_.right_lift_actuator_name + "/" + "control_state");
     conf_names.push_back(params_.belt_actuator_name + "/" + "velocity");
+    conf_names.push_back(params_.hinge_joint_name + "/" + "position");
     return {controller_interface::interface_configuration_type::INDIVIDUAL, conf_names};
 }
 
@@ -37,6 +38,8 @@ controller_interface::InterfaceConfiguration DynamicConveyorController::state_in
 }
 
 controller_interface::return_type DynamicConveyorController::update(const rclcpp::Time & time, const rclcpp::Duration &) {
+
+    update_conveyor_angle();
 
     if(command_available_) {
         command_acknowledged_ = true;
@@ -316,6 +319,8 @@ controller_interface::CallbackReturn DynamicConveyorController::on_configure(
     belt_command_timeout_ = std::chrono::duration<double>(params_.belt_target_timeout);
     left_minus_right_travel_offset_ = params_.left_minus_right_travel_offset;
     last_commanded_belt_velocity_ = params_.initial_belt_speed_rpm;
+    orientation_validity_ = std::chrono::duration<double>(params_.orientation_validity);
+    orientation_received_time_ = rclcpp::Clock().now() - orientation_validity_;
     return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -328,7 +333,8 @@ controller_interface::CallbackReturn DynamicConveyorController::on_activate(
         params_.right_lift_actuator_name + "/" + "position",
         params_.left_lift_actuator_name + "/" + "control_state",
         params_.right_lift_actuator_name + "/" + "control_state",
-        params_.belt_actuator_name + "/" + "velocity"
+        params_.belt_actuator_name + "/" + "velocity",
+        params_.hinge_joint_name + "/" + "position"
     };
     if(!get_loaned_interfaces(
         command_interfaces_,
@@ -369,6 +375,17 @@ controller_interface::CallbackReturn DynamicConveyorController::on_activate(
 
     // State publisher
     state_pub_ = get_node()->create_publisher<rightbot_interfaces::msg::ConveyorState>("conveyor_state", rclcpp::SystemDefaultsQoS());
+
+    // IMU orientation subscriber
+    orientation_sub_ = get_node()->create_subscription<geometry_msgs::msg::Vector3Stamped>(
+        "vectornav/imu_rpy",
+        rclcpp::SystemDefaultsQoS(),
+        std::bind(
+            &DynamicConveyorController::imu_orientation_callback,
+            this,
+            std::placeholders::_1
+        )
+    );
 
     return controller_interface::CallbackReturn::SUCCESS;
 }
@@ -575,6 +592,28 @@ bool DynamicConveyorController::initial_values_valid() {
     }
 
     return true;
+}
+
+void DynamicConveyorController::imu_orientation_callback(const geometry_msgs::msg::Vector3Stamped msg) {
+    {
+        std::lock_guard lk(orientation_mutex_);
+        imu_orientation_ = msg;
+        orientation_received_time_ = rclcpp::Clock().now();
+    }
+}
+
+void DynamicConveyorController::update_conveyor_angle() {
+    {
+        std::lock_guard lk(orientation_mutex_);
+        imu_orientation_copy_ = imu_orientation_;
+        orientation_received_time_copy_ = orientation_received_time_;
+    }
+    if(rclcpp::Clock().now() - orientation_received_time_copy_ > orientation_validity_) {
+        RCLCPP_WARN(get_node()->get_logger(), "IMU orientation not received in time");
+        return;
+    }
+    conveyor_angle_ = imu_orientation_copy_.vector.y;
+    joint_command_interfaces_.at(params_.hinge_joint_name + "/" + "position").get().set_value(conveyor_angle_);
 }
 
 }  // namespace dynamic_conveyor_controller

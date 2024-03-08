@@ -15,6 +15,7 @@
 #include "dynamic_conveyor_controller/parameter_handler.hpp"
 #include "rightbot_interfaces/srv/conveyor_command.hpp"
 #include "rightbot_interfaces/msg/conveyor_state.hpp"
+#include "geometry_msgs/msg/vector3_stamped.hpp"
 
 
 namespace dynamic_conveyor_controller
@@ -86,6 +87,8 @@ private:
     double get_travel_from_height(double height);
     double get_travel_from_angle(double angle);
     bool initial_values_valid();
+    void imu_orientation_callback(const geometry_msgs::msg::Vector3Stamped msg);
+    void update_conveyor_angle();
 
 
     Parameters params_;
@@ -156,6 +159,13 @@ private:
     std::chrono::duration<double> gantry_target_timeout_;
     std::chrono::duration<double> belt_target_velocity_window_time_;
     std::chrono::duration<double> belt_command_timeout_;
+
+    geometry_msgs::msg::Vector3Stamped imu_orientation_, imu_orientation_copy_;
+    std::shared_ptr<rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped>> orientation_sub_;
+    std::mutex orientation_mutex_;
+    rclcpp::Time orientation_received_time_, orientation_received_time_copy_;
+    std::chrono::duration<double> orientation_validity_;
+    double conveyor_angle_;
 };
 
 }  // namespace dynamic_conveyor_controller

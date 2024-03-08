@@ -13,6 +13,7 @@ struct Parameters {
     std::string left_encoder_sensor_name;
     std::string right_encoder_sensor_name;
     std::string belt_actuator_name;
+    std::string hinge_joint_name;
     double initial_belt_speed_rpm;
     double enc_to_dist_multiplication_factor;
     double enc_to_dist_offset_factor;
@@ -25,6 +26,7 @@ struct Parameters {
     double enc_to_enc_sanity_tolerance;
     double left_minus_right_travel_offset;
     double final_moveback_distance;
+    double orientation_validity;
 };
 
 

@@ -11,6 +11,7 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
     pluginlib
     rclcpp
     rclcpp_lifecycle
+    geometry_msgs
 
     rightbot_interfaces
 )
