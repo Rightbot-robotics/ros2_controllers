@@ -18,7 +18,7 @@ bool ParameterHandler::load_parameters(rclcpp_lifecycle::LifecycleNode::SharedPt
     status_ok = status_ok && strict_get_parameter(node, "belt_actuator_name", params_.belt_actuator_name);
     status_ok = status_ok && strict_get_parameter(node, "enc_to_dist_multiplication_factor", params_.enc_to_dist_multiplication_factor);
     status_ok = status_ok && strict_get_parameter(node, "enc_to_dist_offset_factor", params_.enc_to_dist_offset_factor);
-    node->get_parameter_or("initial_belt_speed_rpm", params_.initial_belt_speed_rpm, 0.08);
+    node->get_parameter_or("initial_belt_speed", params_.initial_belt_speed, 0.08);
     node->get_parameter_or("gantry_target_distance_tolerance", params_.gantry_target_distance_tolerance, 0.0005);
     node->get_parameter_or("gantry_target_timeout", params_.gantry_target_timeout, 20.0);
     node->get_parameter_or("belt_target_velocity_tolerance", params_.belt_target_velocity_tolerance, 10.0);
@@ -28,6 +28,8 @@ bool ParameterHandler::load_parameters(rclcpp_lifecycle::LifecycleNode::SharedPt
     node->get_parameter_or("enc_to_enc_sanity_tolerance", params_.enc_to_enc_sanity_tolerance, 0.0001);
     node->get_parameter_or("left_minus_right_travel_offset", params_.left_minus_right_travel_offset, 0.0);
     node->get_parameter_or("final_moveback_distance", params_.final_moveback_distance, 0.0005);
+    node->get_parameter_or("current_storage_interval", params_.current_storage_interval, 1.0);
+    node->get_parameter_or("current_storage_window", params_.current_storage_window, 10);
     
     return status_ok;
 }

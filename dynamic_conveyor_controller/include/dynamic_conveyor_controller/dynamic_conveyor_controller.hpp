@@ -83,6 +83,7 @@ private:
         rightbot_interfaces::srv::ConveyorCommand::Response::SharedPtr resp
     );
     bool wait_until_command_acknowledged();
+    bool current_sanity_check();
     double get_travel_from_height(double height);
     double get_travel_from_angle(double angle);
     bool initial_values_valid();
@@ -149,6 +150,10 @@ private:
     bool check_sanity_ = true;
     bool command_available_ = false;
     bool command_acknowledged_ = false;
+
+    std::vector<double> left_actuator_current_storage_;
+    std::vector<double> right_actuator_current_storage_;
+    int current_storage_index_ = 0;
 
     rclcpp::Time lift_command_sent_time_;
     rclcpp::Time belt_command_sent_time_;

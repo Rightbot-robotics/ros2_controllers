@@ -13,6 +13,23 @@ controller_interface::CallbackReturn DynamicConveyorController::on_init() {
     right_encoder_angle_ = std::nan("");
     left_gantry_raw_distance_ = std::nan("");
     right_gantry_raw_distance_ = std::nan("");
+    gantry_move_request_available_ = false;
+    executing_gantry_move_command_ = false;
+    gantry_lift_request_available_ = false;
+    belt_velocity_request_available_ = false;
+    executing_belt_velocity_command_ = false;
+    realign_left_ = false;
+    realign_right_ = false;
+    realign_request_available_ = false;
+    commanded_stop_ = false;
+    previously_in_belt_velocity_window_ = false;
+    relative_move_request_available_ = false;
+    is_sane_ = true;
+    was_sane_ = true;
+    check_sanity_ = true;
+    command_available_ = false;
+    command_acknowledged_ = false;
+
     return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -30,6 +47,8 @@ controller_interface::InterfaceConfiguration DynamicConveyorController::state_in
     std::vector<std::string> conf_names;
     conf_names.push_back(params_.left_lift_actuator_name + "/" + "position");
     conf_names.push_back(params_.right_lift_actuator_name + "/" + "position");
+    conf_names.push_back(params_.left_lift_actuator_name + "/" + "effort");
+    conf_names.push_back(params_.right_lift_actuator_name + "/" + "effort");
     conf_names.push_back(params_.left_encoder_sensor_name + "/" + "position");
     conf_names.push_back(params_.right_encoder_sensor_name + "/" + "position");
     conf_names.push_back(params_.belt_actuator_name + "/" + "velocity");
@@ -135,6 +154,8 @@ controller_interface::return_type DynamicConveyorController::update(const rclcpp
 
     if(realign_request_available_) {
         RCLCPP_INFO(get_node()->get_logger(), "realigning request available");
+        joint_command_interfaces_.at(params_.left_lift_actuator_name + "/" + "control_state").get().set_value(0.0);
+        joint_command_interfaces_.at(params_.right_lift_actuator_name + "/" + "control_state").get().set_value(0.0);
         realign_difference_ = right_gantry_distance_ - left_gantry_distance_ + left_minus_right_travel_offset_;
         RCLCPP_INFO(get_node()->get_logger(), "realigning difference: %f", realign_difference_);
         if(realign_left_) {
@@ -310,12 +331,19 @@ controller_interface::CallbackReturn DynamicConveyorController::on_configure(
         RCLCPP_ERROR(get_node()->get_logger(), "Failed to load parameters");
         return controller_interface::CallbackReturn::ERROR;
     }
+
     params_ = ph.get_parameters();
     gantry_target_timeout_ = std::chrono::duration<double>(params_.gantry_target_timeout);
     belt_target_velocity_window_time_ = std::chrono::duration<double>(params_.belt_target_velocity_window_time_ms / 1000.0);
     belt_command_timeout_ = std::chrono::duration<double>(params_.belt_target_timeout);
     left_minus_right_travel_offset_ = params_.left_minus_right_travel_offset;
-    last_commanded_belt_velocity_ = params_.initial_belt_speed_rpm;
+    last_commanded_belt_velocity_ = params_.initial_belt_speed;
+
+    left_actuator_current_storage_.clear();
+    left_actuator_current_storage_.reserve(params_.current_storage_window);
+    right_actuator_current_storage_.clear();
+    right_actuator_current_storage_.reserve(params_.current_storage_window);
+    
     return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -326,6 +354,8 @@ controller_interface::CallbackReturn DynamicConveyorController::on_activate(
     std::vector<std::string> required_command_interfaces_name {
         params_.left_lift_actuator_name + "/" + "position",
         params_.right_lift_actuator_name + "/" + "position",
+        params_.left_lift_actuator_name + "/" + "effort",
+        params_.right_lift_actuator_name + "/" + "effort",
         params_.left_lift_actuator_name + "/" + "control_state",
         params_.right_lift_actuator_name + "/" + "control_state",
         params_.belt_actuator_name + "/" + "velocity"
@@ -539,6 +569,11 @@ bool DynamicConveyorController::wait_until_command_acknowledged() {
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
     return true;
+}
+
+bool DynamicConveyorController::current_sanity_check() {
+    
+    return sanity_check();
 }
 
 double DynamicConveyorController::get_travel_from_height(double height) {
