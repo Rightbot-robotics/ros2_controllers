@@ -162,6 +162,8 @@ private:
 
     geometry_msgs::msg::Vector3Stamped imu_orientation_, imu_orientation_copy_;
     std::shared_ptr<rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped>> orientation_sub_;
+    rclcpp::CallbackGroup::SharedPtr imu_msg_callback_group_;
+    rclcpp::SubscriptionOptions imu_msg_subscription_options_;
     std::mutex orientation_mutex_;
     rclcpp::Time orientation_received_time_, orientation_received_time_copy_;
     std::chrono::duration<double> orientation_validity_;
