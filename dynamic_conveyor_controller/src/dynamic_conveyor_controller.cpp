@@ -377,6 +377,9 @@ controller_interface::CallbackReturn DynamicConveyorController::on_activate(
     state_pub_ = get_node()->create_publisher<rightbot_interfaces::msg::ConveyorState>("conveyor_state", rclcpp::SystemDefaultsQoS());
 
     // IMU orientation subscriber
+    imu_msg_callback_group_ = get_node()->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+    imu_msg_subscription_options_ = rclcpp::SubscriptionOptions();
+    imu_msg_subscription_options_.callback_group = imu_msg_callback_group_;
     orientation_sub_ = get_node()->create_subscription<geometry_msgs::msg::Vector3Stamped>(
         "vectornav/imu_rpy",
         rclcpp::SystemDefaultsQoS(),
@@ -384,7 +387,8 @@ controller_interface::CallbackReturn DynamicConveyorController::on_activate(
             &DynamicConveyorController::imu_orientation_callback,
             this,
             std::placeholders::_1
-        )
+        ),
+        imu_msg_subscription_options_
     );
 
     return controller_interface::CallbackReturn::SUCCESS;
