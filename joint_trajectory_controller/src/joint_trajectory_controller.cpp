@@ -334,11 +334,12 @@ controller_interface::return_type JointTrajectoryController::update(
         else if (tool_contact_detected)
         {
           set_hold_position();
-          auto result = std::make_shared<FollowJTrajAction::Result>();
-
           RCLCPP_WARN(get_node()->get_logger(), "Aborted due tool contact. Returning execution success");
-          result->set__error_code(FollowJTrajAction::Result::SUCCESSFUL);
-          active_goal->setAborted(result);
+          auto res = std::make_shared<FollowJTrajAction::Result>();
+          res->set__error_code(FollowJTrajAction::Result::SUCCESSFUL);
+          active_goal->setSucceeded(res);
+          // TODO(matthew-reynolds): Need a lock-free write here
+          // See https://github.com/ros-controls/ros2_controllers/issues/168
           rt_active_goal_.writeFromNonRT(RealtimeGoalHandlePtr());
         }
         else if (!before_last_point)
@@ -760,6 +761,7 @@ controller_interface::CallbackReturn JointTrajectoryController::on_configure(
     RCLCPP_INFO(logger, "Considering tool contact state interface: %s", params_.tool_contact_state_interface.c_str());
     has_ur_tool_contact_interface_ = true;
     other_state_interface_names_.push_back(params_.tool_contact_state_interface);
+    ur_tool_contact_interface_name_ = params_.tool_contact_state_interface;
   }
 
   return CallbackReturn::SUCCESS;
