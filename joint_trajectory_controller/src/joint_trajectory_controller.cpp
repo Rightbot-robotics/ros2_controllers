@@ -108,6 +108,9 @@ JointTrajectoryController::state_interface_configuration() const
       conf.names.push_back(joint_name + "/" + interface_type);
     }
   }
+  for (const auto & interface_name : other_state_interface_names_) {
+    conf.names.push_back(interface_name);
+  }
   return conf;
 }
 
@@ -190,6 +193,7 @@ controller_interface::return_type JointTrajectoryController::update(
     if (valid_point)
     {
       bool tolerance_violated_while_moving = false;
+      bool tool_contact_detected = false;
       bool outside_goal_tolerance = false;
       bool within_goal_time = true;
       double time_difference = 0.0;
@@ -209,6 +213,10 @@ controller_interface::return_type JointTrajectoryController::update(
         {
           tolerance_violated_while_moving = true;
 	        RCLCPP_WARN(get_node()->get_logger(),"trajectory tolerance violated for joint %s: %f", command_joint_names_[index].c_str(), state_error_.positions[index]);
+        }
+
+        if (has_ur_tool_contact_interface_) {
+          tool_contact_detected = other_state_interfaces_.at(ur_tool_contact_interface_name_).get().get_value() == 1.0 ? true : false;
         }
         
         if (
@@ -322,6 +330,16 @@ controller_interface::return_type JointTrajectoryController::update(
           rt_active_goal_.writeFromNonRT(RealtimeGoalHandlePtr());
 
           // check goal tolerance
+        }
+        else if (tool_contact_detected)
+        {
+          set_hold_position();
+          auto result = std::make_shared<FollowJTrajAction::Result>();
+
+          RCLCPP_WARN(get_node()->get_logger(), "Aborted due tool contact. Returning execution success");
+          result->set__error_code(FollowJTrajAction::Result::SUCCESSFUL);
+          active_goal->setAborted(result);
+          rt_active_goal_.writeFromNonRT(RealtimeGoalHandlePtr());
         }
         else if (!before_last_point)
         {
@@ -738,6 +756,12 @@ controller_interface::CallbackReturn JointTrajectoryController::on_configure(
   resize_joint_trajectory_point(state_error_, dof_);
   resize_joint_trajectory_point(last_commanded_state_, dof_);
 
+  if(std::string(params_.tool_contact_state_interface) != std::string("")) {
+    RCLCPP_INFO(logger, "Considering tool contact state interface: %s", params_.tool_contact_state_interface.c_str());
+    has_ur_tool_contact_interface_ = true;
+    other_state_interface_names_.push_back(params_.tool_contact_state_interface);
+  }
+
   return CallbackReturn::SUCCESS;
 }
 
@@ -772,6 +796,28 @@ controller_interface::CallbackReturn JointTrajectoryController::on_activate(
         interface.c_str(), joint_state_interface_[index].size());
       return CallbackReturn::ERROR;
     }
+  }
+
+  auto get_interface_list = [](const std::vector<std::string> & interface_types)
+  {
+    std::stringstream ss_interfaces;
+    for (size_t index = 0; index < interface_types.size(); ++index)
+    {
+      if (index != 0)
+      {
+        ss_interfaces << " ";
+      }
+      ss_interfaces << interface_types[index];
+    }
+    return ss_interfaces.str();
+  };
+  std::vector<std::string> missing_state_interface_names;
+  if(!get_loaned_interfaces(state_interfaces_, other_state_interface_names_, other_state_interfaces_, missing_state_interface_names))
+  {
+    RCLCPP_ERROR(
+      get_node()->get_logger(), "The following interfaces are missing: %s", get_interface_list(missing_state_interface_names).c_str()
+    );
+    return CallbackReturn::ERROR;
   }
 
   // Store 'home' pose

@@ -60,6 +60,31 @@ class State;
 
 namespace joint_trajectory_controller
 {
+
+template <typename T>
+bool get_loaned_interfaces(
+    std::vector<T> & available_interfaces,
+    const std::vector<std::string> & requested_interface_names,
+    std::map<std::string, std::reference_wrapper<T>> & interface_map,
+    std::vector<std::string> & missing_interface_names
+) {
+    bool all_interface_found = true;
+    for(const auto & interface_name : requested_interface_names) {
+        bool found_current_interface = false;
+        for(auto & interface : available_interfaces) {
+            if(interface.get_name() == interface_name) {
+                interface_map.emplace(interface_name, std::ref(interface));
+                found_current_interface = true;
+            }
+        }
+        if(!found_current_interface) {
+            missing_interface_names.push_back(interface_name);
+            all_interface_found = false;
+        }
+    }
+    return all_interface_found;
+}
+
 class Trajectory;
 
 class JointTrajectoryController : public controller_interface::ControllerInterface
@@ -151,6 +176,10 @@ protected:
 
   InterfaceReferences<hardware_interface::LoanedCommandInterface> joint_command_interface_;
   InterfaceReferences<hardware_interface::LoanedStateInterface> joint_state_interface_;
+  std::map<std::string, std::reference_wrapper<hardware_interface::LoanedStateInterface>> other_state_interfaces_;
+  std::vector<std::string> other_state_interface_names_;
+  bool has_ur_tool_contact_interface_ = false;
+  std::string ur_tool_contact_interface_name_ = "";
 
   bool has_position_state_interface_ = false;
   bool has_velocity_state_interface_ = false;
