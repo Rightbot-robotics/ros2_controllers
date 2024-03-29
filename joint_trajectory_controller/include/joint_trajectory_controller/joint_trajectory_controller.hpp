@@ -178,8 +178,11 @@ protected:
   InterfaceReferences<hardware_interface::LoanedStateInterface> joint_state_interface_;
   std::map<std::string, std::reference_wrapper<hardware_interface::LoanedStateInterface>> other_state_interfaces_;
   std::vector<std::string> other_state_interface_names_;
+  std::map<std::string, std::reference_wrapper<hardware_interface::LoanedCommandInterface>> other_command_interfaces_;
+  std::vector<std::string> other_command_interface_names_;
   bool has_ur_tool_contact_interface_ = false;
   std::string ur_tool_contact_interface_name_ = "";
+  std::vector<std::string> control_state_interfaces_;
 
   bool has_position_state_interface_ = false;
   bool has_velocity_state_interface_ = false;

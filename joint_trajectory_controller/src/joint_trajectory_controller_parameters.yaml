@@ -79,6 +79,14 @@ joint_trajectory_controller:
     default_value: "",
     description: "State interface name of the tool contact value from the UR arm hardware interface",
   }
+  control_state_interfaces: {
+    type: string_array,
+    default_value: [],
+    description: "Names of control state interfaces",
+    validation: {
+      unique<>: null,
+    }
+  }
   gains:
     __map_joints:
       p: {

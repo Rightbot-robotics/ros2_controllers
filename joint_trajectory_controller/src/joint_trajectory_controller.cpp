@@ -199,6 +199,11 @@ controller_interface::return_type JointTrajectoryController::update(
       double time_difference = 0.0;
       const bool before_last_point = end_segment_itr != (*traj_point_active_ptr_)->end();
 
+      // setting normal mode for control states of motors
+      for(std::string interface_name : control_state_interfaces_) {
+        other_command_interfaces_.at(interface_name).get().set_value(0.0);
+      }
+
       // Check state/goal tolerance
       for (size_t index = 0; index < dof_; ++index)
       {
@@ -384,6 +389,11 @@ controller_interface::return_type JointTrajectoryController::update(
       if (has_velocity_command_interface_)
       {
         assign_interface_from_point(joint_command_interface_[1], zero_vel);
+      }
+
+      // setting quick stop mode for control states of motors
+      for(std::string interface_name : control_state_interfaces_) {
+        other_command_interfaces_.at(interface_name).get().set_value(2.0);
       }
     }
   }
@@ -764,6 +774,12 @@ controller_interface::CallbackReturn JointTrajectoryController::on_configure(
     ur_tool_contact_interface_name_ = params_.tool_contact_state_interface;
   }
 
+  control_state_interfaces_ = params_.control_state_interfaces;
+  RCLCPP_INFO(logger, "Control state interfaces are [%s].", get_interface_list(control_state_interfaces_).c_str());
+  for(std::string interface : control_state_interfaces_) {
+    other_command_interface_names_.push_back(interface);
+  }
+
   return CallbackReturn::SUCCESS;
 }
 
@@ -817,7 +833,15 @@ controller_interface::CallbackReturn JointTrajectoryController::on_activate(
   if(!get_loaned_interfaces(state_interfaces_, other_state_interface_names_, other_state_interfaces_, missing_state_interface_names))
   {
     RCLCPP_ERROR(
-      get_node()->get_logger(), "The following interfaces are missing: %s", get_interface_list(missing_state_interface_names).c_str()
+      get_node()->get_logger(), "The following state interfaces are missing: %s", get_interface_list(missing_state_interface_names).c_str()
+    );
+    return CallbackReturn::ERROR;
+  }
+  std::vector<std::string> missing_command_interface_names;
+  if(!get_loaned_interfaces(command_interfaces_, other_command_interface_names_, other_command_interfaces_, missing_command_interface_names))
+  {
+    RCLCPP_ERROR(
+      get_node()->get_logger(), "The following command interfaces are missing: %s", get_interface_list(missing_command_interface_names).c_str()
     );
     return CallbackReturn::ERROR;
   }
