@@ -24,6 +24,7 @@ controller_interface::InterfaceConfiguration DynamicConveyorController::command_
     conf_names.push_back(params_.right_lift_actuator_name + "/" + "control_state");
     conf_names.push_back(params_.belt_actuator_name + "/" + "velocity");
     conf_names.push_back(params_.hinge_joint_name + "/" + "position");
+    conf_names.push_back(params_.pillar_joint_name + "/" + "position");
     return {controller_interface::interface_configuration_type::INDIVIDUAL, conf_names};
 }
 
@@ -34,6 +35,7 @@ controller_interface::InterfaceConfiguration DynamicConveyorController::state_in
     conf_names.push_back(params_.left_encoder_sensor_name + "/" + "position");
     conf_names.push_back(params_.right_encoder_sensor_name + "/" + "position");
     conf_names.push_back(params_.belt_actuator_name + "/" + "velocity");
+    conf_names.push_back(params_.hinge_encoder_joint_name + "/" + "position");
     return {controller_interface::interface_configuration_type::INDIVIDUAL, conf_names};
 }
 
@@ -334,7 +336,8 @@ controller_interface::CallbackReturn DynamicConveyorController::on_activate(
         params_.left_lift_actuator_name + "/" + "control_state",
         params_.right_lift_actuator_name + "/" + "control_state",
         params_.belt_actuator_name + "/" + "velocity",
-        params_.hinge_joint_name + "/" + "position"
+        params_.hinge_joint_name + "/" + "position",
+        params_.pillar_joint_name + "/" + "position"
     };
     if(!get_loaned_interfaces(
         command_interfaces_,
@@ -351,7 +354,8 @@ controller_interface::CallbackReturn DynamicConveyorController::on_activate(
         params_.right_lift_actuator_name + "/" + "position",
         params_.left_encoder_sensor_name + "/" + "position",
         params_.right_encoder_sensor_name + "/" + "position",
-        params_.belt_actuator_name + "/" + "velocity"
+        params_.belt_actuator_name + "/" + "velocity",
+        params_.hinge_encoder_joint_name + "/" + "position"
     };
     if(!get_loaned_interfaces(
         state_interfaces_,
@@ -616,8 +620,10 @@ void DynamicConveyorController::update_conveyor_angle() {
         RCLCPP_WARN(get_node()->get_logger(), "IMU orientation not received in time");
         return;
     }
-    conveyor_angle_ = imu_orientation_copy_.vector.y;
-    joint_command_interfaces_.at(params_.hinge_joint_name + "/" + "position").get().set_value(conveyor_angle_);
+    dc_hinge_angle_ = joint_state_interfaces_.at(params_.hinge_encoder_joint_name + "/" + "position").get().get_value();
+    dc_pillar_angle_ = imu_orientation_copy_.vector.y - dc_hinge_angle_;
+    joint_command_interfaces_.at(params_.hinge_joint_name + "/" + "position").get().set_value(dc_hinge_angle_);
+    joint_command_interfaces_.at(params_.pillar_joint_name + "/" + "position").get().set_value(dc_pillar_angle_);
 }
 
 }  // namespace dynamic_conveyor_controller

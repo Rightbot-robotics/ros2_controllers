@@ -18,6 +18,8 @@ bool ParameterHandler::load_parameters(rclcpp_lifecycle::LifecycleNode::SharedPt
     status_ok = status_ok && strict_get_parameter(node, "belt_actuator_name", params_.belt_actuator_name);
     status_ok = status_ok && strict_get_parameter(node, "enc_to_dist_multiplication_factor", params_.enc_to_dist_multiplication_factor);
     status_ok = status_ok && strict_get_parameter(node, "enc_to_dist_offset_factor", params_.enc_to_dist_offset_factor);
+    status_ok = status_ok && strict_get_parameter(node, "pillar_joint_name", params_.pillar_joint_name);
+    status_ok = status_ok && strict_get_parameter(node, "hinge_encoder_joint_name", params_.hinge_encoder_joint_name);
     node->get_parameter_or("hinge_joint_name", params_.hinge_joint_name, std::string("DC_hinge_joint"));
     node->get_parameter_or("initial_belt_speed_rpm", params_.initial_belt_speed_rpm, 0.08);
     node->get_parameter_or("gantry_target_distance_tolerance", params_.gantry_target_distance_tolerance, 0.0005);

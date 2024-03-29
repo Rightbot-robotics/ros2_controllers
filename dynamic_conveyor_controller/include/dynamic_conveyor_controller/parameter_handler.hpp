@@ -14,6 +14,8 @@ struct Parameters {
     std::string right_encoder_sensor_name;
     std::string belt_actuator_name;
     std::string hinge_joint_name;
+    std::string pillar_joint_name;
+    std::string hinge_encoder_joint_name;
     double initial_belt_speed_rpm;
     double enc_to_dist_multiplication_factor;
     double enc_to_dist_offset_factor;

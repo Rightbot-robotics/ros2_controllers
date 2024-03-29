@@ -167,7 +167,8 @@ private:
     std::mutex orientation_mutex_;
     rclcpp::Time orientation_received_time_, orientation_received_time_copy_;
     std::chrono::duration<double> orientation_validity_;
-    double conveyor_angle_;
+    double dc_hinge_angle_;
+    double dc_pillar_angle_;
 };
 
 }  // namespace dynamic_conveyor_controller
