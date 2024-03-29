@@ -92,6 +92,9 @@ JointTrajectoryController::command_interface_configuration() const
       conf.names.push_back(joint_name + "/" + interface_type);
     }
   }
+  for(const auto & interface_name : other_command_interface_names_) {
+    conf.names.push_back(interface_name);
+  }
   return conf;
 }
 
