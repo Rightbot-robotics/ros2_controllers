@@ -203,9 +203,9 @@ controller_interface::return_type JointTrajectoryController::update(
       const bool before_last_point = end_segment_itr != (*traj_point_active_ptr_)->end();
 
       // setting normal mode for control states of motors
-      for(std::string interface_name : control_state_interfaces_) {
-        other_command_interfaces_.at(interface_name).get().set_value(0.0);
-      }
+      // for(std::string interface_name : control_state_interfaces_) {
+      //   other_command_interfaces_.at(interface_name).get().set_value(0.0);
+      // }
 
       // Check state/goal tolerance
       for (size_t index = 0; index < dof_; ++index)
@@ -395,9 +395,9 @@ controller_interface::return_type JointTrajectoryController::update(
       }
 
       // setting quick stop mode for control states of motors
-      for(std::string interface_name : control_state_interfaces_) {
-        other_command_interfaces_.at(interface_name).get().set_value(2.0);
-      }
+      // for(std::string interface_name : control_state_interfaces_) {
+      //   other_command_interfaces_.at(interface_name).get().set_value(2.0);
+      // }
     }
   }
 
