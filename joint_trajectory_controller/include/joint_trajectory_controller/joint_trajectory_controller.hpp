@@ -184,6 +184,9 @@ protected:
   std::string ur_tool_contact_interface_name_ = "";
   std::vector<std::string> control_state_interfaces_;
 
+  bool has_ur_safety_mode_interface_ = false;
+  std::string ur_safety_mode_interface_name_ = "";
+
   bool has_position_state_interface_ = false;
   bool has_velocity_state_interface_ = false;
   bool has_acceleration_state_interface_ = false;
