@@ -87,6 +87,11 @@ joint_trajectory_controller:
       unique<>: null,
     }
   }
+  ur_safety_mode_state_interface: {
+    type: string,
+    default_value: "",
+    description: "State interface name of the UR safety mode value from the UR arm hardware interface",
+  }
   gains:
     __map_joints:
       p: {

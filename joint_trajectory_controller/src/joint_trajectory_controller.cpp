@@ -198,14 +198,15 @@ controller_interface::return_type JointTrajectoryController::update(
       bool tolerance_violated_while_moving = false;
       bool tool_contact_detected = false;
       bool outside_goal_tolerance = false;
+      bool ur_in_fault = false;
       bool within_goal_time = true;
       double time_difference = 0.0;
       const bool before_last_point = end_segment_itr != (*traj_point_active_ptr_)->end();
 
       // setting normal mode for control states of motors
-      for(std::string interface_name : control_state_interfaces_) {
-        other_command_interfaces_.at(interface_name).get().set_value(0.0);
-      }
+      // for(std::string interface_name : control_state_interfaces_) {
+      //   other_command_interfaces_.at(interface_name).get().set_value(0.0);
+      // }
 
       // Check state/goal tolerance
       for (size_t index = 0; index < dof_; ++index)
@@ -225,6 +226,10 @@ controller_interface::return_type JointTrajectoryController::update(
 
         if (has_ur_tool_contact_interface_) {
           tool_contact_detected = other_state_interfaces_.at(ur_tool_contact_interface_name_).get().get_value() == 1.0 ? true : false;
+        }
+
+        if(has_ur_safety_mode_interface_) {
+          ur_in_fault = other_state_interfaces_.at(ur_safety_mode_interface_name_).get().get_value() != 1.0 ? true : false;
         }
         
         if (
@@ -350,6 +355,16 @@ controller_interface::return_type JointTrajectoryController::update(
           // See https://github.com/ros-controls/ros2_controllers/issues/168
           rt_active_goal_.writeFromNonRT(RealtimeGoalHandlePtr());
         }
+        else if (ur_in_fault)
+        {
+          set_hold_position();
+          auto result = std::make_shared<FollowJTrajAction::Result>();
+
+          RCLCPP_WARN(get_node()->get_logger(), "Aborted due to UR arm in fault");
+          result->set__error_code(FollowJTrajAction::Result::PATH_TOLERANCE_VIOLATED);
+          active_goal->setAborted(result);
+          rt_active_goal_.writeFromNonRT(RealtimeGoalHandlePtr());
+        }
         else if (!before_last_point)
         {
           if (!outside_goal_tolerance)
@@ -395,9 +410,9 @@ controller_interface::return_type JointTrajectoryController::update(
       }
 
       // setting quick stop mode for control states of motors
-      for(std::string interface_name : control_state_interfaces_) {
-        other_command_interfaces_.at(interface_name).get().set_value(2.0);
-      }
+      // for(std::string interface_name : control_state_interfaces_) {
+      //   other_command_interfaces_.at(interface_name).get().set_value(2.0);
+      // }
     }
   }
 
@@ -775,6 +790,13 @@ controller_interface::CallbackReturn JointTrajectoryController::on_configure(
     has_ur_tool_contact_interface_ = true;
     other_state_interface_names_.push_back(params_.tool_contact_state_interface);
     ur_tool_contact_interface_name_ = params_.tool_contact_state_interface;
+  }
+
+  if(std::string(params_.ur_safety_mode_state_interface) != std::string("")) {
+    RCLCPP_INFO(logger, "Considering UR safety mode state interface: %s", params_.ur_safety_mode_state_interface.c_str());
+    has_ur_safety_mode_interface_ = true;
+    other_state_interface_names_.push_back(params_.ur_safety_mode_state_interface);
+    ur_safety_mode_interface_name_ = params_.ur_safety_mode_state_interface;
   }
 
   control_state_interfaces_ = params_.control_state_interfaces;
