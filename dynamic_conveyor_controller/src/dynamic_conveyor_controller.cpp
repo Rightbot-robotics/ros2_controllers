@@ -323,6 +323,9 @@ controller_interface::CallbackReturn DynamicConveyorController::on_configure(
     last_commanded_belt_velocity_ = params_.initial_belt_speed_rpm;
     orientation_validity_ = std::chrono::duration<double>(params_.orientation_validity);
     orientation_received_time_ = rclcpp::Clock().now() - orientation_validity_;
+    RCLCPP_INFO(get_node()->get_logger(), "IMU mounting offset degrees: %f", params_.imu_mounting_offset);
+    params_.imu_mounting_offset *= (PI_ / 180.0);
+    RCLCPP_INFO(get_node()->get_logger(), "IMU mounting offset radians: %f", params_.imu_mounting_offset);
     return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -621,7 +624,7 @@ void DynamicConveyorController::update_conveyor_angle() {
         return;
     }
     dc_hinge_angle_ = joint_state_interfaces_.at(params_.hinge_encoder_joint_name + "/" + "position").get().get_value();
-    dc_pillar_angle_ = imu_orientation_copy_.vector.y - dc_hinge_angle_;
+    dc_pillar_angle_ = imu_orientation_copy_.vector.y - dc_hinge_angle_ + params_.imu_mounting_offset;
     joint_command_interfaces_.at(params_.hinge_joint_name + "/" + "position").get().set_value(dc_hinge_angle_);
     joint_command_interfaces_.at(params_.pillar_joint_name + "/" + "position").get().set_value(dc_pillar_angle_);
 }

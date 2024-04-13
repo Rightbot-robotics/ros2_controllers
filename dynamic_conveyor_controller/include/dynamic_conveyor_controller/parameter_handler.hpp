@@ -29,6 +29,7 @@ struct Parameters {
     double left_minus_right_travel_offset;
     double final_moveback_distance;
     double orientation_validity;
+    double imu_mounting_offset;
 };
 
 

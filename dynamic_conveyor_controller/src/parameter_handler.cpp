@@ -32,6 +32,7 @@ bool ParameterHandler::load_parameters(rclcpp_lifecycle::LifecycleNode::SharedPt
     node->get_parameter_or("left_minus_right_travel_offset", params_.left_minus_right_travel_offset, 0.0);
     node->get_parameter_or("final_moveback_distance", params_.final_moveback_distance, 0.0005);
     node->get_parameter_or("orientation_validity", params_.orientation_validity, 1.0);
+    node->get_parameter_or("imu_mounting_offset_deg", params_.imu_mounting_offset, 0.5);
     
     return status_ok;
 }
