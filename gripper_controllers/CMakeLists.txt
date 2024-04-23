@@ -16,6 +16,11 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra)
 endif()
 
+include_directories(
+        include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../spdlog/include
+)
+
 set(THIS_PACKAGE_INCLUDE_DEPENDS
     control_msgs
     control_toolbox

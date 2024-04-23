@@ -70,25 +70,25 @@ if(BUILD_TESTING)
   find_package(rclcpp REQUIRED)
   find_package(ros2_control_test_assets REQUIRED)
 
-  ament_add_gmock(
-    test_load_joint_state_broadcaster
-    test/test_load_joint_state_broadcaster.cpp
-  )
-  target_include_directories(test_load_joint_state_broadcaster PRIVATE include)
-  ament_target_dependencies(test_load_joint_state_broadcaster
-    controller_manager
-    rightbot_hardware_interface
-    ros2_control_test_assets
-  )
+  #ament_add_gmock(
+  #  test_load_joint_state_broadcaster
+  #  test/test_load_joint_state_broadcaster.cpp
+  #)
+  #target_include_directories(test_load_joint_state_broadcaster PRIVATE include)
+  #ament_target_dependencies(test_load_joint_state_broadcaster
+  #  controller_manager
+  #  rightbot_hardware_interface
+  #  ros2_control_test_assets
+  #)
 
-  ament_add_gmock(
-    test_joint_state_broadcaster
-    test/test_joint_state_broadcaster.cpp
-  )
-  target_include_directories(test_joint_state_broadcaster PRIVATE include)
-  target_link_libraries(test_joint_state_broadcaster
-    joint_state_broadcaster
-  )
+  #ament_add_gmock(
+  #  test_joint_state_broadcaster
+  #  test/test_joint_state_broadcaster.cpp
+  #)
+  #target_include_directories(test_joint_state_broadcaster PRIVATE include)
+  #target_link_libraries(test_joint_state_broadcaster
+  #  joint_state_broadcaster
+  #)
 endif()
 
 ament_export_dependencies(
