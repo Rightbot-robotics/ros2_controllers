@@ -1,0 +1,7 @@
+<library path="dynamic_conveyor_lift_tuner_controller">
+  <class name="dynamic_conveyor_lift_tuner_controller/DynamicConveyorLiftTunerController" type="dynamic_conveyor_lift_tuner_controller::DynamicConveyorLiftTunerController" base_class_type="controller_interface::ControllerInterface">
+  <description>
+    The dynamic conveyor lift tuner controller is used to tune the PID gains of lift motors of the dynamic conveyor.
+  </description>
+  </class>
+</library>
