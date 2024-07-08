@@ -76,6 +76,11 @@ private:
     
     double position_command_all_;
 
+    double prev_position_command_left_;
+    double prev_position_command_right_;
+    
+    double prev_position_command_all_;
+
     double kp_command_left_;
     double kp_command_right_;
 
