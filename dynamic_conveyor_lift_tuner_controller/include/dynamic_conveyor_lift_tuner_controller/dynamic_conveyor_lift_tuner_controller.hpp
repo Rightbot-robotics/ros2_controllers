@@ -81,14 +81,21 @@ private:
     
     double prev_position_command_all_;
 
-    double kp_command_left_;
-    double kp_command_right_;
+    double position_kp_command_;
+    double position_ki_command_;
+    double position_kd_command_;
 
-    double ki_command_left_;
-    double ki_command_right_;
+    double velocity_kp_command_;
+    double velocity_ki_command_;
+    double velocity_kd_command_;
+
+    double prev_position_kp_command_;
+    double prev_position_ki_command_;
+    double prev_position_kd_command_;
     
-    double kd_command_left_;
-    double kd_command_right_;
+    double prev_velocity_kp_command_;
+    double prev_velocity_ki_command_;
+    double prev_velocity_kd_command_;
 
     bool stop_command_all_;
 

@@ -11,12 +11,12 @@ controller_interface::CallbackReturn DynamicConveyorLiftTunerController::on_init
     position_command_left_ = std::nan("");
     position_command_right_ = std::nan("");
     position_command_all_ = std::nan("");
-    kp_command_left_ = std::nan("");
-    kp_command_right_ = std::nan("");
-    ki_command_left_ = std::nan("");
-    ki_command_right_ = std::nan("");
-    kd_command_left_ = std::nan("");
-    kd_command_right_ = std::nan("");
+    prev_position_kp_command_ = std::nan("");
+    prev_position_ki_command_ = std::nan("");
+    prev_position_kd_command_ = std::nan("");
+    prev_velocity_kp_command_ = std::nan("");
+    prev_velocity_ki_command_ = std::nan("");
+    prev_velocity_kd_command_ = std::nan("");
     stop_command_all_ = false;
     return controller_interface::CallbackReturn::SUCCESS;
 }
@@ -82,20 +82,35 @@ controller_interface::return_type DynamicConveyorLiftTunerController::update(con
     if (position_command_right_ != prev_position_command_right_) {
         joint_command_interfaces_.at("conveyor_lift_right/position").get().set_value(position_command_right_);
     }
-    // if (kp_command_left_ != std::nan("") || kp_command_right_ != std::nan("")) {
-    //     joint_command_interfaces_.at("conveyor_lift_right/kp").get().set_value(kp_command_right_);
-    //     joint_command_interfaces_.at("conveyor_lift_left/kp").get().set_value(kp_command_left_);
-    // }
+    if (position_kp_command_ != prev_position_kp_command_) {
+        joint_command_interfaces_.at("conveyor_lift_right/position_kp").get().set_value(position_kp_command_);
+        joint_command_interfaces_.at("conveyor_lift_left/position_kp").get().set_value(position_kp_command_);
+    }
 
-    // if (ki_command_left_ != std::nan("") || ki_command_right_ != std::nan("")) {
-    //     joint_command_interfaces_.at("conveyor_lift_right/ki").get().set_value(ki_command_right_);
-    //     joint_command_interfaces_.at("conveyor_lift_left/ki").get().set_value(ki_command_left_);
-    // }
+    if (position_ki_command_ != prev_position_ki_command_) {
+        joint_command_interfaces_.at("conveyor_lift_right/position_ki").get().set_value(position_ki_command_);
+        joint_command_interfaces_.at("conveyor_lift_left/position_ki").get().set_value(position_ki_command_);
+    }
 
-    // if (kd_command_left_ != std::nan("") || kd_command_right_ != std::nan("")) {
-    //     joint_command_interfaces_.at("conveyor_lift_right/kd").get().set_value(kd_command_right_);
-    //     joint_command_interfaces_.at("conveyor_lift_left/kd").get().set_value(kd_command_left_);
-    // }
+    if (position_kd_command_ != prev_position_kd_command_) {
+        joint_command_interfaces_.at("conveyor_lift_right/position_kd").get().set_value(position_kd_command_);
+        joint_command_interfaces_.at("conveyor_lift_left/position_kd").get().set_value(position_kd_command_);
+    }
+
+    if (velocity_kp_command_ != prev_velocity_kp_command_) {
+        joint_command_interfaces_.at("conveyor_lift_right/velocity_kp").get().set_value(velocity_kp_command_);
+        joint_command_interfaces_.at("conveyor_lift_left/velocity_kp").get().set_value(velocity_kp_command_);
+    }
+
+    if (velocity_ki_command_ != prev_velocity_ki_command_) {
+        joint_command_interfaces_.at("conveyor_lift_right/velocity_ki").get().set_value(velocity_ki_command_);
+        joint_command_interfaces_.at("conveyor_lift_left/velocity_ki").get().set_value(velocity_ki_command_);
+    }
+
+    if (velocity_kd_command_ != prev_velocity_kd_command_) {
+        joint_command_interfaces_.at("conveyor_lift_right/velocity_kd").get().set_value(velocity_kd_command_);
+        joint_command_interfaces_.at("conveyor_lift_left/velocity_kd").get().set_value(velocity_kd_command_);
+    }
 
     if (position_command_all_ != prev_position_command_all_) {
         joint_command_interfaces_.at("conveyor_lift_right/position").get().set_value(position_command_all_);
@@ -105,6 +120,14 @@ controller_interface::return_type DynamicConveyorLiftTunerController::update(con
     prev_position_command_left_ = position_command_left_;
     prev_position_command_right_ = position_command_right_;
     prev_position_command_all_ = position_command_all_;
+
+    prev_position_kp_command_ = position_kp_command_;
+    prev_position_ki_command_ = position_ki_command_;
+    prev_position_kd_command_ = position_kd_command_;
+
+    prev_velocity_kp_command_ = velocity_kp_command_;
+    prev_velocity_ki_command_ = velocity_ki_command_;
+    prev_velocity_kd_command_ = velocity_kd_command_;
 
     return controller_interface::return_type::OK;
 }
@@ -225,17 +248,22 @@ void DynamicConveyorLiftTunerController::conveyor_lift_tuner_command_service_cal
                 break;
             }
                 
-            case rightbot_interfaces::srv::ConveyorLiftTunerCommand::Request::SET_PID_GAINS: {
-                kp_command_left_ = req->command_value[0];
-                kp_command_right_ = req->command_value[0];
-                ki_command_left_ = req->command_value[1];
-                ki_command_right_ = req->command_value[1];
-                kd_command_left_ = req->command_value[2];
-                kd_command_right_ = req->command_value[2];
+            case rightbot_interfaces::srv::ConveyorLiftTunerCommand::Request::SET_POSITION_PID_GAINS: {
+                position_kp_command_ = req->command_value[0];
+                position_ki_command_ = req->command_value[1];
+                position_kd_command_ = req->command_value[2];
                 resp->status = true;
                 break;
             }
             
+            case rightbot_interfaces::srv::ConveyorLiftTunerCommand::Request::SET_VELOCITY_PID_GAINS: {
+                velocity_kp_command_ = req->command_value[0];
+                velocity_ki_command_ = req->command_value[1];
+                velocity_kd_command_ = req->command_value[2];
+                resp->status = true;
+                break;
+            }
+
             case rightbot_interfaces::srv::ConveyorLiftTunerCommand::Request::EMEREGNCY_STOP: {
                 stop_command_all_ = true;
                 resp->status = true;
