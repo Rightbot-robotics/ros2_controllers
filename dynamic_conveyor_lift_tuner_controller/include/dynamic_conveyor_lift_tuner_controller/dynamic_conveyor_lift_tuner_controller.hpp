@@ -76,11 +76,6 @@ private:
     
     double position_command_all_;
 
-    double prev_position_command_left_;
-    double prev_position_command_right_;
-    
-    double prev_position_command_all_;
-
     double position_kp_command_;
     double position_ki_command_;
     double position_kd_command_;
@@ -89,15 +84,17 @@ private:
     double velocity_ki_command_;
     double velocity_kd_command_;
 
-    double prev_position_kp_command_;
-    double prev_position_ki_command_;
-    double prev_position_kd_command_;
+    float left_lift_postion_; 
+    float right_lift_position_;
     
-    double prev_velocity_kp_command_;
-    double prev_velocity_ki_command_;
-    double prev_velocity_kd_command_;
-
     bool stop_command_all_;
+    
+    bool sync_motors_ = false;
+
+    double initial_offset_;
+    double current_offset_;
+    
+    int test_counter_;
 
 protected:
 };

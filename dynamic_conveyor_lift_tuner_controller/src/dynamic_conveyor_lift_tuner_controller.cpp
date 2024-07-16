@@ -9,14 +9,14 @@ DynamicConveyorLiftTunerController::DynamicConveyorLiftTunerController() : contr
 controller_interface::CallbackReturn DynamicConveyorLiftTunerController::on_init() {
     RCLCPP_INFO(get_node()->get_logger(), "DynamicConveyorLiftTunerController::on_init()");
     position_command_left_ = std::nan("");
-    position_command_right_ = std::nan("");
+    position_command_right_ = std::nan("");;
     position_command_all_ = std::nan("");
-    prev_position_kp_command_ = std::nan("");
-    prev_position_ki_command_ = std::nan("");
-    prev_position_kd_command_ = std::nan("");
-    prev_velocity_kp_command_ = std::nan("");
-    prev_velocity_ki_command_ = std::nan("");
-    prev_velocity_kd_command_ = std::nan("");
+    position_kp_command_ = std::nan("");
+    position_ki_command_ = std::nan("");
+    position_kd_command_ = std::nan("");
+    velocity_kp_command_ = std::nan("");
+    velocity_ki_command_ = std::nan("");
+    velocity_kd_command_ = std::nan("");
     stop_command_all_ = false;
     return controller_interface::CallbackReturn::SUCCESS;
 }
@@ -50,20 +50,20 @@ controller_interface::InterfaceConfiguration DynamicConveyorLiftTunerController:
     RCLCPP_INFO(get_node()->get_logger(), "DynamicConveyorLiftTunerController::state_interface_configuration()");
     std::vector<std::string> conf_names;
     conf_names.push_back("conveyor_lift_left/position");
-    // conf_names.push_back("conveyor_lift_left/position_kp");
-    // conf_names.push_back("conveyor_lift_left/position_ki");
-    // conf_names.push_back("conveyor_lift_left/position_kd");
-    // conf_names.push_back("conveyor_lift_left/velocity_kp");
-    // conf_names.push_back("conveyor_lift_left/velocity_ki");
-    // conf_names.push_back("conveyor_lift_left/velocity_kd");
+    conf_names.push_back("conveyor_lift_left/position_kp");
+    conf_names.push_back("conveyor_lift_left/position_ki");
+    conf_names.push_back("conveyor_lift_left/position_kd");
+    conf_names.push_back("conveyor_lift_left/velocity_kp");
+    conf_names.push_back("conveyor_lift_left/velocity_ki");
+    conf_names.push_back("conveyor_lift_left/velocity_kd");
 
     conf_names.push_back("conveyor_lift_right/position");
-    // conf_names.push_back("conveyor_lift_right/position_kp");
-    // conf_names.push_back("conveyor_lift_right/position_ki");
-    // conf_names.push_back("conveyor_lift_right/position_kd");
-    // conf_names.push_back("conveyor_lift_right/velocity_kp");
-    // conf_names.push_back("conveyor_lift_right/velocity_ki");
-    // conf_names.push_back("conveyor_lift_right/velocity_kd");
+    conf_names.push_back("conveyor_lift_right/position_kp");
+    conf_names.push_back("conveyor_lift_right/position_ki");
+    conf_names.push_back("conveyor_lift_right/position_kd");
+    conf_names.push_back("conveyor_lift_right/velocity_kp");
+    conf_names.push_back("conveyor_lift_right/velocity_ki");
+    conf_names.push_back("conveyor_lift_right/velocity_kd");
     
     return {controller_interface::interface_configuration_type::INDIVIDUAL, conf_names};
 }
@@ -75,59 +75,84 @@ controller_interface::return_type DynamicConveyorLiftTunerController::update(con
         joint_command_interfaces_.at("conveyor_lift_left/control_state").get().set_value(2.0);
     }
 
-    if (position_command_left_ != prev_position_command_left_) {
+    if (!std::isnan(position_command_left_)) {
         joint_command_interfaces_.at("conveyor_lift_left/position").get().set_value(position_command_left_);
     }
 
-    if (position_command_right_ != prev_position_command_right_) {
+    if (!std::isnan(position_command_right_)) {
         joint_command_interfaces_.at("conveyor_lift_right/position").get().set_value(position_command_right_);
     }
-    if (position_kp_command_ != prev_position_kp_command_) {
+    if (!std::isnan(position_kp_command_)) {
         joint_command_interfaces_.at("conveyor_lift_right/position_kp").get().set_value(position_kp_command_);
         joint_command_interfaces_.at("conveyor_lift_left/position_kp").get().set_value(position_kp_command_);
     }
 
-    if (position_ki_command_ != prev_position_ki_command_) {
+    if (!std::isnan(position_ki_command_)) {
         joint_command_interfaces_.at("conveyor_lift_right/position_ki").get().set_value(position_ki_command_);
         joint_command_interfaces_.at("conveyor_lift_left/position_ki").get().set_value(position_ki_command_);
     }
 
-    if (position_kd_command_ != prev_position_kd_command_) {
+    if (!std::isnan(position_kd_command_)) {
         joint_command_interfaces_.at("conveyor_lift_right/position_kd").get().set_value(position_kd_command_);
         joint_command_interfaces_.at("conveyor_lift_left/position_kd").get().set_value(position_kd_command_);
     }
 
-    if (velocity_kp_command_ != prev_velocity_kp_command_) {
+    if (!std::isnan(velocity_kp_command_)) {
         joint_command_interfaces_.at("conveyor_lift_right/velocity_kp").get().set_value(velocity_kp_command_);
         joint_command_interfaces_.at("conveyor_lift_left/velocity_kp").get().set_value(velocity_kp_command_);
     }
 
-    if (velocity_ki_command_ != prev_velocity_ki_command_) {
+    if (!std::isnan(velocity_ki_command_)) {
         joint_command_interfaces_.at("conveyor_lift_right/velocity_ki").get().set_value(velocity_ki_command_);
         joint_command_interfaces_.at("conveyor_lift_left/velocity_ki").get().set_value(velocity_ki_command_);
     }
 
-    if (velocity_kd_command_ != prev_velocity_kd_command_) {
+    if (!std::isnan(velocity_kd_command_)) {
         joint_command_interfaces_.at("conveyor_lift_right/velocity_kd").get().set_value(velocity_kd_command_);
         joint_command_interfaces_.at("conveyor_lift_left/velocity_kd").get().set_value(velocity_kd_command_);
     }
 
-    if (position_command_all_ != prev_position_command_all_) {
+    if (!std::isnan(position_command_all_)) {
+        left_lift_postion_ = joint_state_interfaces_.at("conveyor_lift_right/position").get().get_value();
+        right_lift_position_ = joint_state_interfaces_.at("conveyor_lift_left/position").get().get_value();
+
+        initial_offset_ = left_lift_postion_ - right_lift_position_; 
+
         joint_command_interfaces_.at("conveyor_lift_right/position").get().set_value(position_command_all_);
         joint_command_interfaces_.at("conveyor_lift_left/position").get().set_value(position_command_all_);
     }
+
+    if (sync_motors_) {
     
-    prev_position_command_left_ = position_command_left_;
-    prev_position_command_right_ = position_command_right_;
-    prev_position_command_all_ = position_command_all_;
+        left_lift_postion_ = joint_state_interfaces_.at("conveyor_lift_right/position").get().get_value();
+        right_lift_position_ = joint_state_interfaces_.at("conveyor_lift_left/position").get().get_value();
+    
+        current_offset_ = left_lift_postion_ - right_lift_position_;
+    
+        if (std::abs(current_offset_ - initial_offset_) > 3.00) {
+            joint_command_interfaces_.at("conveyor_lift_right/control_state").get().set_value(2.0);
+            joint_command_interfaces_.at("conveyor_lift_left/control_state").get().set_value(2.0);    
+        }
+    }
 
-    prev_position_kp_command_ = position_kp_command_;
-    prev_position_ki_command_ = position_ki_command_;
-    prev_position_kd_command_ = position_kd_command_;
+    // if (test_counter_ % 100 == 0)
+    // {
+    //     RCLCPP_INFO(get_node()->get_logger(), "left_lift_postion: {%f}, right_lift_position: {%f}, position_difference: {%f}", left_lift_postion_, right_lift_position_, position_difference);
+    // }
 
-    prev_velocity_kp_command_ = velocity_kp_command_;
-    prev_velocity_ki_command_ = velocity_ki_command_;
-    prev_velocity_kd_command_ = velocity_kd_command_;
+    position_command_left_ = std::nan("");
+    position_command_right_ = std::nan("");
+    position_command_all_ = std::nan("");
+
+    position_kp_command_ = std::nan("");
+    position_ki_command_ = std::nan("");
+    position_kd_command_ = std::nan("");
+
+    velocity_kp_command_ = std::nan("");
+    velocity_ki_command_ = std::nan("");
+    velocity_kd_command_ = std::nan("");
+
+    test_counter_++;
 
     return controller_interface::return_type::OK;
 }
@@ -177,20 +202,20 @@ controller_interface::CallbackReturn DynamicConveyorLiftTunerController::on_acti
     // Acquiring state interfaces
     std::vector<std::string> required_state_interfaces_name {
         "conveyor_lift_left/position",
-        // "conveyor_lift_left/position_kp",
-        // "conveyor_lift_left/position_ki",
-        // "conveyor_lift_left/position_kd",
-        // "conveyor_lift_left/velocity_kp",
-        // "conveyor_lift_left/velocity_ki",
-        // "conveyor_lift_left/velocity_kd",
+        "conveyor_lift_left/position_kp",
+        "conveyor_lift_left/position_ki",
+        "conveyor_lift_left/position_kd",
+        "conveyor_lift_left/velocity_kp",
+        "conveyor_lift_left/velocity_ki",
+        "conveyor_lift_left/velocity_kd",
 
         "conveyor_lift_right/position",
-        // "conveyor_lift_right/position_kp",
-        // "conveyor_lift_right/position_ki",
-        // "conveyor_lift_right/position_kd",
-        // "conveyor_lift_right/velocity_kp",
-        // "conveyor_lift_right/velocity_ki",
-        // "conveyor_lift_right/velocity_kd"
+        "conveyor_lift_right/position_kp",
+        "conveyor_lift_right/position_ki",
+        "conveyor_lift_right/position_kd",
+        "conveyor_lift_right/velocity_kp",
+        "conveyor_lift_right/velocity_ki",
+        "conveyor_lift_right/velocity_kd"
     };
 
     if(!get_loaned_interfaces(
@@ -232,18 +257,21 @@ void DynamicConveyorLiftTunerController::conveyor_lift_tuner_command_service_cal
         switch(req->command_type) {
             case rightbot_interfaces::srv::ConveyorLiftTunerCommand::Request::SET_POSITION_LEFT: {
                 position_command_left_ = req->command_value[0];
+                sync_motors_ = false;
                 resp->status = true;   
                 break;
             }
                 
             case rightbot_interfaces::srv::ConveyorLiftTunerCommand::Request::SET_POSITION_RIGHT: {
                 position_command_right_ = req->command_value[0];
+                sync_motors_ = false;
                 resp->status = true;
                 break;
             }
                 
             case rightbot_interfaces::srv::ConveyorLiftTunerCommand::Request::SET_POSITION: {
                 position_command_all_ = req->command_value[0];
+                sync_motors_ = true;
                 resp->status = true;
                 break;
             }
