@@ -93,6 +93,7 @@ private:
 
     double initial_offset_;
     double current_offset_;
+    double offet_threshold_;
     
     int test_counter_;
 

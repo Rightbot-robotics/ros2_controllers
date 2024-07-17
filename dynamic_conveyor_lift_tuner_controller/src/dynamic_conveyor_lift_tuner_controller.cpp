@@ -18,6 +18,7 @@ controller_interface::CallbackReturn DynamicConveyorLiftTunerController::on_init
     velocity_ki_command_ = std::nan("");
     velocity_kd_command_ = std::nan("");
     stop_command_all_ = false;
+    offet_threshold_ = 0.5;
     return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -129,7 +130,7 @@ controller_interface::return_type DynamicConveyorLiftTunerController::update(con
     
         current_offset_ = left_lift_postion_ - right_lift_position_;
     
-        if (std::abs(current_offset_ - initial_offset_) > 3.00) {
+        if (std::abs(current_offset_ - initial_offset_) > offet_threshold_) {
             joint_command_interfaces_.at("conveyor_lift_right/control_state").get().set_value(2.0);
             joint_command_interfaces_.at("conveyor_lift_left/control_state").get().set_value(2.0);    
         }
