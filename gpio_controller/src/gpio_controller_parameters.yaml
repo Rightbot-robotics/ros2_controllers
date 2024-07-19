@@ -1,0 +1,33 @@
+gpio_controller:
+  outputs: {
+    type: string_array,
+    default_value: [],
+    description: "output names"
+  }
+  # output_mapping:
+  #   __map_outputs:
+  #     interface: {
+  #       type: string,
+  #       default_value: "",
+  #       description: "interface name"
+  #     }
+
+# gpio_controller:
+#   ros__parameters:  
+#     outputs:
+#      - push_front
+#      - pull_back
+#      - lift_up
+#      - lift_down
+#     output_mapping:
+#       push_front:
+#         interface: amc_motor/gpio_output_0
+#       pull_back:
+#         interface: amc_motor/gpio_output_1
+#       lift_up:
+#         interface: zlac_motor/gpio_output_0
+#       lift_down:
+#         interface: zlac_motor/gpio_output_1
+
+
+# Command for pulling pack: {gpio_names: ["push_front", "pull_back"], gpio_states: [False, True]}
