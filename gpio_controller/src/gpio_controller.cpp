@@ -1,109 +1,158 @@
-#include "gpio_controller/gpio_controller.hpp"
+#include <gpio_controller/gpio_controller.hpp>
 
-#include <string>
 
 namespace gpio_controller
 {
-controller_interface::CallbackReturn GPIOController::on_init()
-{
-  try
-  {
-    auto_declare<std::vector<std::string>>("outputs", std::vector<std::string>());
-    auto param_listener_ = std::make_shared<ParamListener>(get_node());
-    auto params_ = param_listener_->get_params();
-    int i = params_.outputs.size();
-    RCLCPP_DEBUG(get_node()->get_logger(), "hakunamatata....... %i", i);
+
+GPIOController::GPIOController() : controller_interface::ControllerInterface() {}
+
+controller_interface::CallbackReturn GPIOController::on_init() {
+    RCLCPP_INFO(get_node()->get_logger(), "GPIOController::on_init()");
+    param_listener_ = std::make_shared<ParamListener>(get_node());
+    params_ = param_listener_->get_params();
+    for (size_t i = 0; i < params_.outputs.size(); i++)
+    {
+        gpio_states_.push_back(0.0);
+        prev_gpio_states_.push_back(0.0);
+    }
     
-
-  }
-  catch (const std::exception & e)
-  {
-    fprintf(stderr, "Exception thrown during init stage with message: %s \n", e.what());
-    return controller_interface::CallbackReturn::ERROR;
-  }
-  return controller_interface::CallbackReturn::SUCCESS;
+    return controller_interface::CallbackReturn::SUCCESS;
 }
 
-controller_interface::InterfaceConfiguration GPIOController::command_interface_configuration() const
-{
-  controller_interface::InterfaceConfiguration config;
-  config.type = controller_interface::interface_configuration_type::INDIVIDUAL;
-  config.names = outputs_;
+controller_interface::InterfaceConfiguration GPIOController::command_interface_configuration() const {
+    RCLCPP_INFO(get_node()->get_logger(), "GPIOController::command_interface_configuration()");
+    std::vector<std::string> conf_names;
+    
+    for (size_t i = 0; i < params_.outputs.size(); i++)
+    {
+        conf_names.push_back(params_.output_mapping.outputs_map.at(params_.outputs.at(i)).interface.data());
+    }
 
-  return config;
+    return {controller_interface::interface_configuration_type::INDIVIDUAL, conf_names};
 }
 
-controller_interface::InterfaceConfiguration GPIOController::state_interface_configuration() const
-{
-  controller_interface::InterfaceConfiguration config;
-  config.type = controller_interface::interface_configuration_type::INDIVIDUAL;
-  return config;
+controller_interface::InterfaceConfiguration GPIOController::state_interface_configuration() const {
+    RCLCPP_INFO(get_node()->get_logger(), "GPIOController::state_interface_configuration()");
+    std::vector<std::string> conf_names;
+
+    return {controller_interface::interface_configuration_type::INDIVIDUAL, conf_names};
 }
 
-controller_interface::return_type GPIOController::update(
-  const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/)
-{
-  // set outputs
-//   if (!output_cmd_ptr_)
-//   {
-//     // no command received yet
-//     return controller_interface::return_type::OK;
-//   }
-//   if (output_cmd_ptr_->data.size() != command_interfaces_.size())
-//   {
-//     RCLCPP_ERROR_THROTTLE(
-//       get_node()->get_logger(), *(get_node()->get_clock()), 1000,
-//       "command size (%zu) does not match number of interfaces (%zu)", output_cmd_ptr_->data.size(),
-//       command_interfaces_.size());
-//     return controller_interface::return_type::ERROR;
-//   }
+controller_interface::return_type GPIOController::update(const rclcpp::Time &, const rclcpp::Duration &) {
+    // RCLCPP_INFO(get_node()->get_logger(), "GPIOController::update()");
 
-//   for (size_t i = 0; i < command_interfaces_.size(); i++)
-//   {
-//     command_interfaces_[i].set_value(output_cmd_ptr_->data[i]);
-//     RCLCPP_DEBUG(
-//       get_node()->get_logger(), "%s: (%f)", command_interfaces_[i].get_name().c_str(),
-//       command_interfaces_[i].get_value());
-//   }
-  RCLCPP_DEBUG(get_node()->get_logger(), "hakunamatata.......");
+    for (size_t i = 0; i < params_.outputs.size(); i++)
+    {
+        if (prev_gpio_states_[i] != gpio_states_[i])
+        {
+            joint_command_interfaces_.at(params_.output_mapping.outputs_map.at(params_.outputs.at(i)).interface.data()).get().set_value(gpio_command_);
+        }
+            
+    }
 
-  return controller_interface::return_type::OK;
+    prev_gpio_states_ = gpio_states_;
+    prev_gpio_command_ = gpio_command_;
+
+    return controller_interface::return_type::OK;
 }
 
 controller_interface::CallbackReturn GPIOController::on_configure(
-  const rclcpp_lifecycle::State & /*previous_state*/)
-{
-  try
-  {
-    outputs_ = get_node()->get_parameter("outputs").as_string_array();
-    
-    // register subscriber
-    // subscription_command_ = get_node()->create_subscription<CmdType>(
-    //   "~/commands", rclcpp::SystemDefaultsQoS(),
-    //   [this](const CmdType::SharedPtr msg) { output_cmd_ptr_ = msg; });
-  }
-  catch (...)
-  {
-    return LifecycleNodeInterface::CallbackReturn::ERROR;
-  }
-  return LifecycleNodeInterface::CallbackReturn::SUCCESS;
+    const rclcpp_lifecycle::State &) {
+    RCLCPP_INFO(get_node()->get_logger(), "GPIOController::on_configure()");
+    return controller_interface::CallbackReturn::SUCCESS;
 }
 
 controller_interface::CallbackReturn GPIOController::on_activate(
-  const rclcpp_lifecycle::State & /*previous_state*/)
-{
-  return LifecycleNodeInterface::CallbackReturn::SUCCESS;
+    const rclcpp_lifecycle::State &) {
+    RCLCPP_INFO(get_node()->get_logger(), "GPIOController::on_activate()");
+    
+    // Acquiring command interfaces
+    std::vector<std::string> required_command_interfaces_name {};
+
+    for (size_t i = 0; i < params_.outputs.size(); i++)
+    {
+        required_command_interfaces_name.push_back(params_.output_mapping.outputs_map.at(params_.outputs.at(i)).interface.data());
+    }
+    
+
+    if(!get_loaned_interfaces(
+        command_interfaces_,
+        required_command_interfaces_name,
+        joint_command_interfaces_
+    )) {
+        RCLCPP_ERROR(get_node()->get_logger(), "All the requested command interface is not found");
+        return controller_interface::CallbackReturn::ERROR;
+    }
+
+    // Creating services
+    gpio_command_srv_ = get_node()->create_service<rightbot_interfaces::srv::GpioCommand>(
+        "gpio_command",
+        std::bind(
+            &GPIOController::gpio_command_service_callback,
+            this,
+            std::placeholders::_1,
+            std::placeholders::_2
+        )
+    );
+
+    return controller_interface::CallbackReturn::SUCCESS;
 }
 
 controller_interface::CallbackReturn GPIOController::on_deactivate(
-  const rclcpp_lifecycle::State & /*previous_state*/)
-{
-  return LifecycleNodeInterface::CallbackReturn::SUCCESS;
+    const rclcpp_lifecycle::State &) {
+    RCLCPP_INFO(get_node()->get_logger(), "GPIOController::on_deactivate()");
+    gpio_command_srv_.reset();
+    joint_command_interfaces_.clear();
+    return controller_interface::CallbackReturn::SUCCESS;
 }
 
-}  // namespace gpio_controller
+int GPIOController::binaryToDecimal(int n)
+{
+    int num = n;
+    int dec_value = 0;
+ 
+    // Initializing base value to 1, i.e 2^0
+    int base = 1;
+ 
+    int temp = num;
+    while (temp) {
+        int last_digit = temp % 10;
+        temp = temp / 10;
+ 
+        dec_value += last_digit * base;
+ 
+        base = base * 2;
+    }
+ 
+    return dec_value;
+}
 
-#include "pluginlib/class_list_macros.hpp"
+void GPIOController::gpio_command_service_callback(
+    rightbot_interfaces::srv::GpioCommand::Request::SharedPtr req,
+    rightbot_interfaces::srv::GpioCommand::Response::SharedPtr resp) {
+    
+    // RCLCPP_INFO(get_node()->get_logger(), "[GPIOController] gpio_command_service_callback");
+
+        for (size_t i = 0; i < params_.outputs.size(); i++)
+        {
+            if(req->gpio_names[i] == params_.outputs.at(i)) {
+                // RCLCPP_INFO(get_node()->get_logger(), "Output %s", params_.output_mapping.outputs_map.at(params_.outputs.at(i)).interface.data());
+                // RCLCPP_INFO(get_node()->get_logger(), "Output %i", i);
+                gpio_states_[i] = req->gpio_states[i];
+            }
+        }
+        auto binary = std::accumulate( gpio_states_.begin(), gpio_states_.end(), 0, []( int l, int r ) {
+            return l * 10 + r; 
+        } );
+
+        gpio_command_ = binaryToDecimal(binary);
+
+        RCLCPP_INFO(get_node()->get_logger(), "Output %s", std::to_string(gpio_command_).c_str());
+
+    resp->status = true;    
+}  
+} // namespace gpio_controller
+#include "class_loader/register_macro.hpp"
 
 CLASS_LOADER_REGISTER_CLASS(
   gpio_controller::GPIOController, controller_interface::ControllerInterface)

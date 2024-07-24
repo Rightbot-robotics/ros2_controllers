@@ -1,16 +1,16 @@
 gpio_controller:
-  outputs: {
-    type: string_array,
-    default_value: [],
+  outputs: 
+    type: string_array
+    default_value: []
     description: "output names"
-  }
-  # output_mapping:
-  #   __map_outputs:
-  #     interface: {
-  #       type: string,
-  #       default_value: "",
-  #       description: "interface name"
-  #     }
+
+  output_mapping:
+    __map_outputs:
+      interface:
+        type: string
+        default_value: ""
+        description: "interface name"
+      
 
 # gpio_controller:
 #   ros__parameters:  
