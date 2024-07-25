@@ -45,7 +45,8 @@ controller_interface::return_type GPIOController::update(const rclcpp::Time &, c
     {
         if (prev_gpio_states_[i] != gpio_states_[i])
         {
-            joint_command_interfaces_.at(params_.output_mapping.outputs_map.at(params_.outputs.at(i)).interface.data()).get().set_value(gpio_command_);
+            joint_command_interfaces_.at(params_.output_mapping.outputs_map.at(params_.outputs.at(i)).interface.data()).get().set_value(gpio_states_[i]);
+            // RCLCPP_INFO(get_node()->get_logger(), "GPIOController::update() - %s: %f", params_.outputs.at(i).data(), gpio_states_[i]);
         }
             
     }
@@ -106,33 +107,16 @@ controller_interface::CallbackReturn GPIOController::on_deactivate(
     return controller_interface::CallbackReturn::SUCCESS;
 }
 
-int GPIOController::binaryToDecimal(int n)
-{
-    int num = n;
-    int dec_value = 0;
- 
-    // Initializing base value to 1, i.e 2^0
-    int base = 1;
- 
-    int temp = num;
-    while (temp) {
-        int last_digit = temp % 10;
-        temp = temp / 10;
- 
-        dec_value += last_digit * base;
- 
-        base = base * 2;
-    }
- 
-    return dec_value;
-}
-
 void GPIOController::gpio_command_service_callback(
     rightbot_interfaces::srv::GpioCommand::Request::SharedPtr req,
     rightbot_interfaces::srv::GpioCommand::Response::SharedPtr resp) {
     
-    // RCLCPP_INFO(get_node()->get_logger(), "[GPIOController] gpio_command_service_callback");
+    int binary = 0;
+    std::vector<int> indices = {};
+    std::vector<int> states = {};
 
+    // RCLCPP_INFO(get_node()->get_logger(), "[GPIOController] gpio_command_service_callback");
+    if(req->gpio_names.size() == params_.outputs.size()) {
         for (size_t i = 0; i < params_.outputs.size(); i++)
         {
             if(req->gpio_names[i] == params_.outputs.at(i)) {
@@ -141,13 +125,51 @@ void GPIOController::gpio_command_service_callback(
                 gpio_states_[i] = req->gpio_states[i];
             }
         }
-        auto binary = std::accumulate( gpio_states_.begin(), gpio_states_.end(), 0, []( int l, int r ) {
+        binary = std::accumulate( gpio_states_.begin(), gpio_states_.end(), 0, []( int l, int r ) {
             return l * 10 + r; 
         } );
+    }
+    else if (req->gpio_names.size() != params_.outputs.size())
+    {
+        for (size_t i = 0; i < req->gpio_names.size(); i++){
+            int n = params_.outputs.size()/sizeof(params_.outputs.at(0));
 
-        gpio_command_ = binaryToDecimal(binary);
+            auto itr = find(params_.outputs.begin(), params_.outputs.end(), req->gpio_names[i]);
 
-        RCLCPP_INFO(get_node()->get_logger(), "Output %s", std::to_string(gpio_command_).c_str());
+            if (itr != end(params_.outputs))
+            {
+                indices.push_back(distance(params_.outputs.begin(), itr));
+                states.push_back(int(req->gpio_states[i]));
+                std::cerr << "Element " << req->gpio_names[i] << " is present at index "
+                     << distance(params_.outputs.begin(), itr) << " in the given array\n";
+            }
+            else {
+                std::cerr << "Element is not present in the given array\n";
+            }
+        }
+
+        for (size_t i = 0; i < indices.size(); i++){
+            gpio_states_[indices[i]] = states[i];
+        }
+        binary = std::accumulate( gpio_states_.begin(), gpio_states_.end(), 0, []( int l, int r ) {
+            return l * 10 + r; 
+        } );
+    }
+    else
+    {
+        RCLCPP_ERROR(get_node()->get_logger(), "Output %s is not found", req->gpio_names[0]);
+        resp->status = false;
+        return;
+    }
+
+    // gpio_command_ = binaryToDecimal(binary);
+
+    RCLCPP_INFO(get_node()->get_logger(), "Output %s", std::to_string(gpio_command_).c_str());
+
+    prev_bin_ = binary;
+
+    indices.clear();
+    states.clear();
 
     resp->status = true;    
 }  

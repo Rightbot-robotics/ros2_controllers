@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <string>
-
+#include <algorithm>
 #include "controller_interface/controller_interface.hpp"
 #include "rightbot_interfaces/srv/gpio_command.hpp"
 #include "gpio_controller_parameters.hpp"
@@ -66,8 +66,6 @@ private:
         rightbot_interfaces::srv::GpioCommand::Response::SharedPtr resp
     );
 
-    int binaryToDecimal(int n);
-
     rclcpp::Service<rightbot_interfaces::srv::GpioCommand>::SharedPtr gpio_command_srv_;
 
     std::map<std::string, std::reference_wrapper<hardware_interface::LoanedCommandInterface>> joint_command_interfaces_;
@@ -82,6 +80,8 @@ private:
     double gpio_command_;
 
     double prev_gpio_command_;
+
+    double prev_bin_;
 
 protected:
 };
