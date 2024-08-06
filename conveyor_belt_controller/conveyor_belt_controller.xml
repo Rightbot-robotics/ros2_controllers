@@ -1,0 +1,7 @@
+<library path="conveyor_belt_controller">
+  <class name="conveyor_belt_controller/ConveyorBeltController" type="conveyor_belt_controller::ConveyorBeltController" base_class_type="controller_interface::ControllerInterface">
+  <description>
+    The conveyor_belt_controller commands the three conveyor belts of the Wolverine bot to ON/OFF state and also hosts a service which commands halt (soft stop/ hard stop/ release) to the respective actuators.
+  </description>
+  </class>
+</library>
