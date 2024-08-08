@@ -7,7 +7,7 @@ namespace conveyor_belt_controller
 ConveyorBeltController::ConveyorBeltController() : controller_interface::ControllerInterface() {}
 
 controller_interface::CallbackReturn ConveyorBeltController::on_init() {
-    RCLCPP_INFO(get_node()->get_logger(), "ConveyorBeltController::on_init()");
+    RCLCPP_DEBUG(get_node()->get_logger(), "ConveyorBeltController::on_init()");
     try
     {
         // Create the parameter listener and get the parameters
@@ -30,30 +30,30 @@ controller_interface::CallbackReturn ConveyorBeltController::on_init() {
 }
 
 controller_interface::InterfaceConfiguration ConveyorBeltController::command_interface_configuration() const {
-    RCLCPP_INFO(get_node()->get_logger(), "ConveyorBeltController::command_interface_configuration()");
+    RCLCPP_DEBUG(get_node()->get_logger(), "ConveyorBeltController::command_interface_configuration()");
     std::vector<std::string> conf_names;
     for (size_t i = 0; i < params_.actuator_names.size(); i++) {
         std::string req_cmd_interface = params_.actuator_info.actuator_names_map.at(params_.actuator_names.at(i)).function_halt_command_interface.data();
         conf_names.push_back(req_cmd_interface);
-        RCLCPP_INFO(get_node()->get_logger(), "requesting command interface: %s", req_cmd_interface.c_str());
+        RCLCPP_DEBUG(get_node()->get_logger(), "requesting command interface: %s", req_cmd_interface.c_str());
     }
     return {controller_interface::interface_configuration_type::INDIVIDUAL, conf_names};
 }
 
 controller_interface::InterfaceConfiguration ConveyorBeltController::state_interface_configuration() const {
-    RCLCPP_INFO(get_node()->get_logger(), "ConveyorBeltController::state_interface_configuration()");
+    RCLCPP_DEBUG(get_node()->get_logger(), "ConveyorBeltController::state_interface_configuration()");
     std::vector<std::string> conf_names;
     for (size_t i = 0; i < params_.actuator_names.size(); i++) {
         std::string req_state_interface = params_.actuator_info.actuator_names_map.at(params_.actuator_names.at(i)).functional_state_interface.data();
         conf_names.push_back(req_state_interface);
-        RCLCPP_INFO(get_node()->get_logger(), "requesting state interface: %s", req_state_interface.c_str());
+        RCLCPP_DEBUG(get_node()->get_logger(), "requesting state interface: %s", req_state_interface.c_str());
     }
     return {controller_interface::interface_configuration_type::INDIVIDUAL, conf_names};
 }
 
 controller_interface::CallbackReturn ConveyorBeltController::on_configure(
     const rclcpp_lifecycle::State &) {
-    RCLCPP_INFO(get_node()->get_logger(), "ConveyorBeltController::on_configure()");
+    RCLCPP_DEBUG(get_node()->get_logger(), "ConveyorBeltController::on_configure()");
     for (size_t i = 0; i < params_.actuator_names.size(); i++) {
         std::string req_cmd_interface = params_.actuator_info.actuator_names_map.at(params_.actuator_names.at(i)).function_halt_command_interface.data();
         actuator_halt_cmd_interface_map_.emplace(params_.actuator_names.at(i), req_cmd_interface);
@@ -67,7 +67,7 @@ controller_interface::CallbackReturn ConveyorBeltController::on_configure(
 
 controller_interface::CallbackReturn ConveyorBeltController::on_activate(
     const rclcpp_lifecycle::State &) {
-    RCLCPP_INFO(get_node()->get_logger(), "ConveyorBeltController::on_activate()");
+    RCLCPP_DEBUG(get_node()->get_logger(), "ConveyorBeltController::on_activate()");
 
     if(!get_loaned_interfaces(
         command_interfaces_,
@@ -104,7 +104,7 @@ controller_interface::CallbackReturn ConveyorBeltController::on_activate(
 }
 
 controller_interface::return_type ConveyorBeltController::update(const rclcpp::Time &, const rclcpp::Duration &) {
-    // RCLCPP_INFO(get_node()->get_logger(), "ConveyorBeltController::update()");
+    process_halt_service();
     return controller_interface::return_type::OK;
 }
 
@@ -112,7 +112,7 @@ void ConveyorBeltController::halt_service_callback(
     rightbot_interfaces::srv::SetActuatorControlState::Request::SharedPtr req,
     rightbot_interfaces::srv::SetActuatorControlState::Response::SharedPtr resp
 ) {
-    RCLCPP_INFO(get_node()->get_logger(), "Received set actuator control state request");
+    RCLCPP_INFO(get_node()->get_logger(), "[halt_service_callback] Received set actuator control state servvice request");
     std::string requested_actuators, requested_states;
 
     for (size_t i = 0; i < req->actuator_name.size(); i++) {
@@ -122,8 +122,8 @@ void ConveyorBeltController::halt_service_callback(
         requested_states += ", ";
     }
 
-    RCLCPP_INFO(get_node()->get_logger(), "Requested actuators: %s", requested_actuators.c_str());
-    RCLCPP_INFO(get_node()->get_logger(), "Requested states: %s", requested_states.c_str());
+    RCLCPP_INFO(get_node()->get_logger(), "[halt_service_callback] Requested actuators: %s", requested_actuators.c_str());
+    RCLCPP_INFO(get_node()->get_logger(), "[halt_service_callback] Requested states: %s", requested_states.c_str());
 
     {
         std::lock_guard lk(halt_service_shared_data_.mutex);
@@ -142,7 +142,9 @@ void ConveyorBeltController::halt_service_callback(
             resp->msg = halt_service_shared_data_.result_msg;
         }
         else {
-            RCLCPP_ERROR(get_node()->get_logger(), "Halt service timed out");
+            RCLCPP_ERROR(get_node()->get_logger(), "[halt_service_callback] Halt service timed out waiting for processing response");
+            resp->success = false;
+            resp->msg = "TIMEOUT";
         }
         halt_service_shared_data_.command_available = false;
     }
@@ -170,8 +172,9 @@ void ConveyorBeltController::process_halt_service() {
     // Check validity of command at first pass
     if (halt_service_process_data_.first_pass) {
         // Size check
+        RCLCPP_INFO(get_node()->get_logger(), "[process_halt_service] Running size check on halt service request");
         if (halt_service_process_data_.actuator_name.size() != halt_service_process_data_.actuator_state.size()) {
-            RCLCPP_ERROR(get_node()->get_logger(), "Invalid service request: actuator_name and actuator_state size mismatch");
+            RCLCPP_ERROR(get_node()->get_logger(), "[process_halt_service] Invalid service request: actuator_name and actuator_state size mismatch");
             {
                 std::lock_guard lk(halt_service_shared_data_.mutex);
                 halt_service_shared_data_.service_result = false;
@@ -184,9 +187,41 @@ void ConveyorBeltController::process_halt_service() {
         }
 
         // Command type check
+        RCLCPP_INFO(get_node()->get_logger(), "[process_halt_service] Running command type check on halt service request");
         for (size_t i = 0; i < halt_service_process_data_.actuator_state.size(); i++) {
             if (cmd_to_int_map_.count(halt_service_process_data_.actuator_state.at(i)) == 0) {
-                RCLCPP_ERROR(get_node()->get_logger(), "Invalid service request: invalid command type");
+                RCLCPP_ERROR(get_node()->get_logger(), "[process_halt_service] Invalid service request: invalid command type");
+                {
+                    std::lock_guard lk(halt_service_shared_data_.mutex);
+                    halt_service_shared_data_.service_result = false;
+                    halt_service_shared_data_.result_msg = "INVALID REQUEST";
+                    halt_service_shared_data_.response_available = true;
+                    halt_service_shared_data_.command_available = false;
+                }
+                halt_service_shared_data_.cv.notify_all();
+                return;
+            }
+        }
+
+        // Check the correctness of actuator names
+        RCLCPP_INFO(get_node()->get_logger(), "[process_halt_service] Running actuator name check on halt service request");
+        for (size_t i = 0; i < halt_service_process_data_.actuator_state.size(); i++) {
+            if (actuator_halt_cmd_interface_map_.count(halt_service_process_data_.actuator_name.at(i)) == 0) {
+                RCLCPP_ERROR(get_node()->get_logger(), "[process_halt_service] Invalid service request: command interface for %s not found", halt_service_process_data_.actuator_name.at(i).c_str());
+                {
+                    std::lock_guard lk(halt_service_shared_data_.mutex);
+                    halt_service_shared_data_.service_result = false;
+                    halt_service_shared_data_.result_msg = "INVALID REQUEST";
+                    halt_service_shared_data_.response_available = true;
+                    halt_service_shared_data_.command_available = false;
+                }
+                halt_service_shared_data_.cv.notify_all();
+                return;
+            }
+        }
+        for (size_t i = 0; i < halt_service_process_data_.actuator_state.size(); i++) {
+            if (actuator_halt_state_interface_map_.count(halt_service_process_data_.actuator_name.at(i)) == 0) {
+                RCLCPP_ERROR(get_node()->get_logger(), "[process_halt_service] Invalid service request: command interface for %s not found", halt_service_process_data_.actuator_name.at(i).c_str());
                 {
                     std::lock_guard lk(halt_service_shared_data_.mutex);
                     halt_service_shared_data_.service_result = false;
@@ -202,12 +237,12 @@ void ConveyorBeltController::process_halt_service() {
 
     // Send command at first pass
     if (halt_service_process_data_.first_pass) {
-        RCLCPP_INFO(get_node()->get_logger(), "Processing halt service request");
+        RCLCPP_INFO(get_node()->get_logger(), "[process_halt_service] Processing halt service request");
         for (size_t i = 0; i < halt_service_process_data_.actuator_name.size(); i++) {
             loaned_command_interfaces_.at(
                 actuator_halt_cmd_interface_map_.at(halt_service_process_data_.actuator_name.at(i))
             ).get().set_value((double)cmd_to_int_map_.at(halt_service_process_data_.actuator_state.at(i)));
-            RCLCPP_INFO(get_node()->get_logger(), "Sending %d to %s",
+            RCLCPP_INFO(get_node()->get_logger(), "[process_halt_service] Sending %d to %s",
                 cmd_to_int_map_.at(halt_service_process_data_.actuator_state.at(i)),
                 halt_service_process_data_.actuator_name.at(i).c_str()
             );
@@ -218,7 +253,7 @@ void ConveyorBeltController::process_halt_service() {
     {
         halt_service_process_data_.state_changed = true;
         for (size_t i = 0; i < halt_service_process_data_.actuator_name.size(); i++) {
-            halt_service_process_data_.curr_functional_state = (int)loaned_state_interfaces_.at(actuator_halt_cmd_interface_map_.at(halt_service_process_data_.actuator_name.at(i))).get().get_value();
+            halt_service_process_data_.curr_functional_state = (int)loaned_state_interfaces_.at(actuator_halt_state_interface_map_.at(halt_service_process_data_.actuator_name.at(i))).get().get_value();
             if(
                 halt_service_process_data_.curr_functional_state
                 != cmd_to_int_map_.at(halt_service_process_data_.actuator_state.at(i))
@@ -227,7 +262,7 @@ void ConveyorBeltController::process_halt_service() {
             }
         }
         if(halt_service_process_data_.state_changed) {
-            RCLCPP_INFO(get_node()->get_logger(), "Actuator functional states have been set successfully");
+            RCLCPP_INFO(get_node()->get_logger(), "[process_halt_service] Actuator functional states have been set successfully");
             {
                 std::lock_guard lk(halt_service_shared_data_.mutex);
                 halt_service_shared_data_.service_result = true;
@@ -247,7 +282,7 @@ void ConveyorBeltController::process_halt_service() {
                 std::chrono::system_clock::now() - halt_service_start_time_
             ).count() > (int)(params_.halt_service_timeout_sec * 1000)
         ) {
-            RCLCPP_ERROR(get_node()->get_logger(), "Halt service timed out");
+            RCLCPP_ERROR(get_node()->get_logger(), "[process_halt_service] Timeout waiting for state to change");
             {
                 std::lock_guard lk(halt_service_shared_data_.mutex);
                 halt_service_shared_data_.service_result = false;
