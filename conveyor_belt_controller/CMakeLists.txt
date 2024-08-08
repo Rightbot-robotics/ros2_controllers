@@ -11,6 +11,8 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
     pluginlib
     rclcpp
     rclcpp_lifecycle
+    rightbot_interfaces
+    generate_parameter_library
 )
 
 # find dependencies
@@ -22,12 +24,17 @@ endforeach()
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
+generate_parameter_library(conveyor_belt_controller_parameters
+  src/conveyor_belt_controller_parameters.yaml
+)
+
 add_library(${PROJECT_NAME} SHARED
   src/conveyor_belt_controller.cpp
 )
 target_include_directories(${PROJECT_NAME}
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
+target_link_libraries(${PROJECT_NAME} conveyor_belt_controller_parameters)
 ament_target_dependencies(${PROJECT_NAME} ${THIS_PACKAGE_INCLUDE_DEPENDS})
 pluginlib_export_plugin_description_file(controller_interface conveyor_belt_controller.xml)
 

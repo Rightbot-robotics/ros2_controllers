@@ -1,0 +1,24 @@
+conveyor_belt_controller:
+  actuator_names: {
+    type: string_array,
+    default_value: [],
+    description: "Names of the conveyor belt actuators",
+    validation: {
+      unique<>: null
+    }
+  }
+  halt_service_timeout_sec: {
+    type: double,
+    default_value: 2.0,
+    description: "Timeout for the halt service"
+  }
+  actuator_info:
+    __map_actuator_names:
+      function_halt_command_interface: {
+        type: string,
+        description: "Name of the actuator halt command interface"
+      }
+      functional_state_interface: {
+        type: string,
+        description: "Name of the actuator functional state, state interface"
+      }

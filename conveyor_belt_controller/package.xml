@@ -8,13 +8,14 @@
   <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
-  <build_depend>generate_parameter_library</build_depend>
 
   <depend>controller_interface</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_lifecycle</depend>
   <depend>rcpputils</depend>
   <depend>realtime_tools</depend>
+  <depend>generate_parameter_library</depend>
+  <depend>rightbot_interfaces</depend>
 
   <build_depend>pluginlib</build_depend>
 
