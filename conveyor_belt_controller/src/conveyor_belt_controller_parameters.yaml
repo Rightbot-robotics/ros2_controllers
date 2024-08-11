@@ -22,3 +22,7 @@ conveyor_belt_controller:
         type: string,
         description: "Name of the actuator functional state, state interface"
       }
+      velocity_command_interface: {
+        type: string,
+        description: "Name of the actuator velocity command interface"
+      }

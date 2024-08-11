@@ -9,6 +9,7 @@
 
 #include "controller_interface/controller_interface.hpp"
 #include "rightbot_interfaces/srv/set_actuator_control_state.hpp"
+#include "rightbot_interfaces/srv/conveyor_belt_command.hpp"
 
 #include "conveyor_belt_controller_parameters.hpp"
 
@@ -69,6 +70,11 @@ public:
         rightbot_interfaces::srv::SetActuatorControlState::Request::SharedPtr req,
         rightbot_interfaces::srv::SetActuatorControlState::Response::SharedPtr resp
     );
+    
+    void conveyor_service_callback(
+        rightbot_interfaces::srv::ConveyorBeltCommand::Request::SharedPtr req,
+        rightbot_interfaces::srv::ConveyorBeltCommand::Response::SharedPtr resp
+    );
 
 protected:
     std::shared_ptr<ParamListener> param_listener_;
@@ -76,6 +82,7 @@ protected:
 
 private:
     void process_halt_service();
+    void process_conveyor_service();
 
     std::vector<std::string> required_command_interfaces_;
     std::map<std::string, std::reference_wrapper<hardware_interface::LoanedCommandInterface>> loaned_command_interfaces_;
@@ -103,6 +110,26 @@ private:
         int curr_functional_state;
     } halt_service_process_data_;
     std::chrono::time_point<std::chrono::system_clock> halt_service_start_time_;
+
+
+    rclcpp::Service<rightbot_interfaces::srv::ConveyorBeltCommand>::SharedPtr conveyor_service_;
+    std::map<std::string, std::string> actuator_velocity_interface_map_;
+    struct {
+        std::vector<std::string> actuator_name;
+        std::vector<double> actuator_velocity;
+        bool command_available = false, received_command = false, response_available = false, service_result;
+        std::string result_msg;
+        std::mutex mutex;
+        std::condition_variable cv;
+    } conveyor_service_shared_data_;
+    struct {
+        std::vector<std::string> actuator_name;
+        std::vector<double> actuator_velocity;
+        bool command_available = false, first_pass, service_result, state_changed;
+        double curr_velocity;
+    } conveyor_service_process_data_;
+    std::chrono::time_point<std::chrono::system_clock> conveyor_service_start_time_;
+
     rclcpp::CallbackGroup::SharedPtr halt_service_callback_group_;
     rclcpp::SubscriptionOptions halt_service_subscription_options_;
 };
