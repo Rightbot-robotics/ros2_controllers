@@ -400,21 +400,21 @@ void ConveyorBeltController::process_conveyor_service() {
         }
 
         // Command type check
-        RCLCPP_INFO(get_node()->get_logger(), "[process_halt_service] Running command type check on halt service request");
-        for (size_t i = 0; i < conveyor_service_process_data_.actuator_velocity.size(); i++) {
-            if (conveyor_service_process_data_.actuator_velocity.at(i) < 0) {
-                RCLCPP_ERROR(get_node()->get_logger(), "[process_halt_service] Invalid service request: Reverse velocity not allowed");
-                {
-                    std::lock_guard lk(conveyor_service_shared_data_.mutex);
-                    conveyor_service_shared_data_.service_result = false;
-                    conveyor_service_shared_data_.result_msg = "INVALID REQUEST";
-                    conveyor_service_shared_data_.response_available = true;
-                    conveyor_service_shared_data_.command_available = false;
-                }
-                conveyor_service_shared_data_.cv.notify_all();
-                return;
-            }
-        }
+        // RCLCPP_INFO(get_node()->get_logger(), "[process_halt_service] Running command type check on halt service request");
+        // for (size_t i = 0; i < conveyor_service_process_data_.actuator_velocity.size(); i++) {
+        //     if (conveyor_service_process_data_.actuator_velocity.at(i) < 0) {
+        //         RCLCPP_ERROR(get_node()->get_logger(), "[process_halt_service] Invalid service request: Reverse velocity not allowed");
+        //         {
+        //             std::lock_guard lk(conveyor_service_shared_data_.mutex);
+        //             conveyor_service_shared_data_.service_result = false;
+        //             conveyor_service_shared_data_.result_msg = "INVALID REQUEST";
+        //             conveyor_service_shared_data_.response_available = true;
+        //             conveyor_service_shared_data_.command_available = false;
+        //         }
+        //         conveyor_service_shared_data_.cv.notify_all();
+        //         return;
+        //     }
+        // }
 
         // Check the correctness of actuator names
         RCLCPP_INFO(get_node()->get_logger(), "[process_halt_service] Running actuator name check on halt service request");
