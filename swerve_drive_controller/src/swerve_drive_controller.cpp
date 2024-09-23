@@ -26,8 +26,8 @@ controller_interface::CallbackReturn SwerveDriveController::on_init() {
     num_modules_ = params_.swerve_modules_name.size();
     std::vector<std::pair<double, double>> module_positions;
     for(auto module_name : params_.swerve_modules_name) {
-        double module_x_pos = params_.swerve_modules_name_map.at(module_name).wheel_position.x;
-        double module_y_pos = params_.swerve_modules_name_map.at(module_name).wheel_position.y;
+        double module_x_pos = params_.modules_info.swerve_modules_name_map.at(module_name).wheel_position.x;
+        double module_y_pos = params_.modules_info.swerve_modules_name_map.at(module_name).wheel_position.y;
         module_positions.push_back({module_x_pos, module_y_pos});
     }
 
@@ -51,8 +51,8 @@ controller_interface::InterfaceConfiguration SwerveDriveController::command_inte
     RCLCPP_INFO(get_node()->get_logger(), "SwerveDriveController::command_interface_configuration()");
     std::vector<std::string> conf_names;
     for (std::string module_name : params_.swerve_modules_name) {
-        std::string steer_joint = params_.swerve_modules_name_map.at(module_name).steer_joint_name;
-        std::string drive_joint = params_.swerve_modules_name_map.at(module_name).drive_joint_name;
+        std::string steer_joint = params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name;
+        std::string drive_joint = params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name;
         conf_names.push_back(steer_joint + "/position");
         conf_names.push_back(drive_joint + "/velocity");
     }
@@ -63,8 +63,8 @@ controller_interface::InterfaceConfiguration SwerveDriveController::state_interf
     RCLCPP_INFO(get_node()->get_logger(), "SwerveDriveController::state_interface_configuration()");
     std::vector<std::string> conf_names;
     for (std::string module_name : params_.swerve_modules_name) {
-        std::string steer_joint = params_.swerve_modules_name_map.at(module_name).steer_joint_name;
-        std::string drive_joint = params_.swerve_modules_name_map.at(module_name).drive_joint_name;
+        std::string steer_joint = params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name;
+        std::string drive_joint = params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name;
         conf_names.push_back(steer_joint + "/position");
         conf_names.push_back(drive_joint + "/position");
     }
@@ -75,8 +75,8 @@ controller_interface::CallbackReturn SwerveDriveController::on_configure(
     const rclcpp_lifecycle::State &) {
     RCLCPP_INFO(get_node()->get_logger(), "SwerveDriveController::on_configure()");
     for (std::string module_name : params_.swerve_modules_name) {
-        std::string steer_joint = params_.swerve_modules_name_map.at(module_name).steer_joint_name;
-        std::string drive_joint = params_.swerve_modules_name_map.at(module_name).drive_joint_name;
+        std::string steer_joint = params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name;
+        std::string drive_joint = params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name;
 
         required_command_interfaces_.push_back(steer_joint + "/position");
         required_command_interfaces_.push_back(drive_joint + "/velocity");
@@ -157,12 +157,11 @@ void SwerveDriveController::cmd_vel_callback(const geometry_msgs::msg::Twist::Sh
 }
 
 void SwerveDriveController::update_base_state_variables() {
-    int i;
-    i = 0;
+    int i = 0;
     for(std::string module_name : params_.swerve_modules_name) {
-        curr_steer_wheel_angle_[i] = loaned_state_interfaces_.at(params_.swerve_modules_name_map.at(module_name).steer_joint_name + "/position").get_value();
-        curr_drive_wheel_angle_[i] = loaned_state_interfaces_.at(params_.swerve_modules_name_map.at(module_name).drive_joint_name + "/position").get_value();
-        curr_drive_wheel_vel_[i] = loaned_state_interfaces_.at(params_.swerve_modules_name_map.at(module_name).drive_joint_name + "/velocity").get_value();
+        curr_steer_wheel_angle_[i] = loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/position").get_value();
+        curr_drive_wheel_angle_[i] = loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/position").get_value();
+        curr_drive_wheel_vel_[i] = loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/velocity").get_value();
         i++;
     }
 }
@@ -246,10 +245,20 @@ void SwerveDriveController::handle_cmd_vel() {
     kinematics_->inverse_kinematics(target_velocity_, swerve_modules_vel_cmd_);
     for(int i = 0; i < num_modules_; i++) {
         steer_wheel_angle_cmd_[i] = std::atan2(swerve_modules_vel_cmd_[i].second, swerve_modules_vel_cmd_[i].first);
-        drive_wheel_vel_cmd_[i] = 
+        double wheel_radius = params.modules_info.swerve_modules_name_map.at(params_.swerve_modules_name[i]).wheel_radius;
+        drive_wheel_vel_cmd_[i] = std::hypot(swerve_modules_vel_cmd_[i].first, swerve_modules_vel_cmd_[i].second) / wheel_radius;
     }
 
     prev_target_velocity_ = target_velocity_;
+
+    {
+        int i = 0;
+        for(std::string module_name : params_.swerve_modules_name) {
+            loaned_command_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/position").set_value(steer_wheel_angle_cmd_[i]);
+            loaned_command_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/velocity").set_value(drive_wheel_vel_cmd_[i]);
+            i++;
+        }
+    }
 }
 
 void SwerveDriveController::apply_kinematics_limits(Velocity& vel_in) {
