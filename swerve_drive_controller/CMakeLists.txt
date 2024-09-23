@@ -11,6 +11,8 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
     pluginlib
     rclcpp
     rclcpp_lifecycle
+    nav_msgs
+    tf2_geometry_msgs
     generate_parameter_library
 )
 
@@ -29,6 +31,9 @@ generate_parameter_library(swerve_drive_controller_parameters
 
 add_library(${PROJECT_NAME} SHARED
   src/swerve_drive_controller.cpp
+  src/types.cpp
+  src/kinematics.cpp
+  src/odometry.cpp
 )
 target_include_directories(${PROJECT_NAME}
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

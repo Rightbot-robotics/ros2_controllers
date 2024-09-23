@@ -4,16 +4,10 @@
 namespace swerve_drive_controller {
 
 Velocity::Velocity() {
-    set_zero();
+    set_speed(0.0, 0.0, 0.0);
 }
 
-void Velocity::set_zero() {
-    linear_x = 0.0;
-    linear_y = 0.0;
-    angular_z = 0.0;
-}
-
-void Velocity::set_speed(double& linear_x, double& linear_y, double& angular_z) {
+void Velocity::set_speed(double linear_x, double linear_y, double angular_z) {
     this->linear_x = linear_x;
     this->linear_y = linear_y;
     this->angular_z = angular_z;

@@ -47,14 +47,17 @@ swerve_drive_controller:
   }
   linear_accel_x: {
     type: double,
+    default_value: 0.15,
     description: "Linear acceleration in x direction in m/s^2"
   }
   linear_accel_y: {
     type: double,
+    default_value: 0.15,
     description: "Linear acceleration in y direction in m/s^2"
   }
   angular_accel_z: {
     type: double,
+    default_value: 0.05,
     description: "Angular acceleration in z direction in rad/s^2"
   }
   
@@ -77,15 +80,14 @@ swerve_drive_controller:
         type: string,
         description: "Name of the drive joint"
       }
-      wheel_position:
-        x: {
-          type: double,
-          description: "X position of the wheel with respect to drive center"
-        }
-        y: {
-          type: double,
-          description: "Y position of the wheel with respect to drive center"
-        }
+      wheel_x: {
+        type: double,
+        description: "X position of the wheel with respect to drive center"
+      }
+      wheel_y: {
+        type: double,
+        description: "Y position of the wheel with respect to drive center"
+      }
       wheel_radius: {
         type: double,
         description: "Wheel radius"

@@ -10,7 +10,7 @@ OdometryProcessor::OdometryProcessor() {
     odom_msg = nav_msgs::msg::Odometry();
 }
 
-OdometryProcessor::update_odometry(Velocity& base_pos_diff, Velocity& base_vel) {
+void OdometryProcessor::update_odometry(Velocity& base_pos_diff, Velocity& base_vel) {
     dx_local_ = base_pos_diff.linear_x;
     dy_local_ = base_pos_diff.linear_y;
     dtheta_local_ = base_pos_diff.angular_z;

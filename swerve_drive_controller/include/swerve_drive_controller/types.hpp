@@ -14,7 +14,7 @@ public:
     double epsilon = 1e-6;
 
     Velocity();
-    void set_speed(double& linear_x, double& linear_y, double& angular_z);
+    void set_speed(double linear_x, double linear_y, double angular_z);
     void set_speed(geometry_msgs::msg::Twist& twist);
     void set_speed(Velocity& velocity);
     bool is_zero();

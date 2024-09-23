@@ -6,20 +6,21 @@ namespace swerve_drive_controller {
 SwerveDriveKinematics::SwerveDriveKinematics(std::vector<std::pair<double, double>> module_positions) {
     num_modules_ = module_positions.size();
 
-    matrix_inverse_kinematics_.resize(num_modules_*2, 3)
+    matrix_inverse_kinematics_.resize(num_modules_*2, 3);
     for(int i = 0; i < num_modules_; i++) {
-        matrix_inverse_kinematics(i*2, 0) = 1;
-        matrix_inverse_kinematics(i*2, 1) = 0;
-        matrix_inverse_kinematics(i*2, 2) = module_positions[i].second;  // y_pos
+        matrix_inverse_kinematics_(i*2, 0) = 1;
+        matrix_inverse_kinematics_(i*2, 1) = 0;
+        matrix_inverse_kinematics_(i*2, 2) = module_positions[i].second;  // y_pos
 
-        matrix_inverse_kinematics(i*2+1, 0) = 0;
-        matrix_inverse_kinematics(i*2+1, 1) = 1;
-        matrix_inverse_kinematics(i*2+1, 2) = module_positions[i].first;  // x_pos
+        matrix_inverse_kinematics_(i*2+1, 0) = 0;
+        matrix_inverse_kinematics_(i*2+1, 1) = 1;
+        matrix_inverse_kinematics_(i*2+1, 2) = module_positions[i].first;  // x_pos
     }
 
     matrix_forward_kinematics_ = matrix_inverse_kinematics_.householderQr();
 
-    modules_vel_matrix_.resize(num_modules_*2, 1);
+    modules_vel_matrix_fk_.resize(num_modules_*2, 1);
+    modules_vel_matrix_ik_.resize(num_modules_*2, 1);
 }
 
 void SwerveDriveKinematics::forward_kinematics(std::vector<std::pair<double, double>>& modules_vel, Velocity& base_vel) {
@@ -42,8 +43,8 @@ void SwerveDriveKinematics::inverse_kinematics(Velocity& base_vel, std::vector<s
 
     modules_vel_matrix_ik_ = matrix_inverse_kinematics_ * drive_vel_matrix_ik_;
     
-    if(modules_vel.size() != num_modules_) {
-        while(modules_vel.size() < num_modules_) {
+    if((int)modules_vel.size() != num_modules_) {
+        while((int)modules_vel.size() < num_modules_) {
             modules_vel.emplace_back(0, 0);
         }
     }

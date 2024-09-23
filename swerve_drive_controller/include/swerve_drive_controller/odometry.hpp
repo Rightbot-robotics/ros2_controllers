@@ -1,7 +1,9 @@
 #ifndef SWERVE_DRIVE_CONTROLLER__ODOMETRY_HPP_
 #define SWERVE_DRIVE_CONTROLLER__ODOMETRY_HPP_
 
-#include <swerve_drive_controller/types.h>
+#include <swerve_drive_controller/types.hpp>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <cmath>
 
@@ -12,7 +14,7 @@ public:
     nav_msgs::msg::Odometry odom_msg;
     
     OdometryProcessor();
-    update_odometry(Velocity& base_pos_diff, Velocity& base_vel);
+    void update_odometry(Velocity& base_pos_diff, Velocity& base_vel);
 
 private:
     double x_;
@@ -25,7 +27,7 @@ private:
     double linear_x_;
     double linear_y_;
     double angular_z_;
-}
+};
 
 }
 

@@ -26,21 +26,22 @@ controller_interface::CallbackReturn SwerveDriveController::on_init() {
     num_modules_ = params_.swerve_modules_name.size();
     std::vector<std::pair<double, double>> module_positions;
     for(auto module_name : params_.swerve_modules_name) {
-        double module_x_pos = params_.modules_info.swerve_modules_name_map.at(module_name).wheel_position.x;
-        double module_y_pos = params_.modules_info.swerve_modules_name_map.at(module_name).wheel_position.y;
+        double module_x_pos = params_.modules_info.swerve_modules_name_map.at(module_name).wheel_x;
+        double module_y_pos = params_.modules_info.swerve_modules_name_map.at(module_name).wheel_y;
         module_positions.push_back({module_x_pos, module_y_pos});
     }
 
     kinematics_ = std::make_shared<SwerveDriveKinematics>(module_positions);
     odom_processor_ = std::make_shared<OdometryProcessor>();
 
-    cmd_vel_expiry_time_ = std::chrono::time_point<std::chrono::system_clock>::now();
+    cmd_vel_expiry_time_ = std::chrono::system_clock::now();
     cmd_velocity_ = Velocity();
     cmd_velocity_cp_ = Velocity();
     target_velocity_ = Velocity();
     prev_target_velocity_ = Velocity();
     curr_steer_wheel_angle_ = std::vector<double>(num_modules_, 0.0);
     curr_drive_wheel_angle_ = std::vector<double>(num_modules_, 0.0);
+    curr_drive_wheel_vel_ = std::vector<double>(num_modules_, 0.0);
     cmd_vel_expired_ = true;
     base_at_zero_vel_ = true;
 
@@ -67,6 +68,7 @@ controller_interface::InterfaceConfiguration SwerveDriveController::state_interf
         std::string drive_joint = params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name;
         conf_names.push_back(steer_joint + "/position");
         conf_names.push_back(drive_joint + "/position");
+        conf_names.push_back(drive_joint + "/velocity");
     }
     return {controller_interface::interface_configuration_type::INDIVIDUAL, conf_names};
 }
@@ -83,7 +85,9 @@ controller_interface::CallbackReturn SwerveDriveController::on_configure(
         
         required_state_interfaces_.push_back(steer_joint + "/position");
         required_state_interfaces_.push_back(drive_joint + "/position");
+        required_state_interfaces_.push_back(drive_joint + "/velocity");
     }
+
     return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -118,7 +122,7 @@ controller_interface::CallbackReturn SwerveDriveController::on_activate(
 
     odom_pub_ = get_node()->create_publisher<nav_msgs::msg::Odometry>(
         params_.odom_topic,
-        10
+        rclcpp::SystemDefaultsQoS()
     );
 
     return controller_interface::CallbackReturn::SUCCESS;
@@ -152,16 +156,18 @@ void SwerveDriveController::cmd_vel_callback(const geometry_msgs::msg::Twist::Sh
     {
         std::lock_guard<std::mutex> lock(cmd_vel_mutex_);
         cmd_velocity_.set_speed(*msg);
-        cmd_vel_expiry_time_ = std::chrono::system_clock::now() + params_.cmd_vel_timeout;
+        cmd_vel_expiry_time_ = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+            std::chrono::system_clock::now() + std::chrono::duration<double>(params_.cmd_vel_timeout)
+        );
     }
 }
 
 void SwerveDriveController::update_base_state_variables() {
     int i = 0;
     for(std::string module_name : params_.swerve_modules_name) {
-        curr_steer_wheel_angle_[i] = loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/position").get_value();
-        curr_drive_wheel_angle_[i] = loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/position").get_value();
-        curr_drive_wheel_vel_[i] = loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/velocity").get_value();
+        curr_steer_wheel_angle_[i] = loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/position").get().get_value();
+        curr_drive_wheel_angle_[i] = loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/position").get().get_value();
+        curr_drive_wheel_vel_[i] = loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/velocity").get().get_value();
         i++;
     }
 }
@@ -211,6 +217,8 @@ void SwerveDriveController::handle_cmd_vel() {
     if(update_loop_first_pass_) {
         for(int i = 0; i < num_modules_; i++) {
             swerve_modules_vel_cmd_.emplace_back(0, 0);
+            steer_wheel_angle_cmd_.emplace_back(0);
+            drive_wheel_vel_cmd_.emplace_back(0);
         }
         return;
     }
@@ -232,7 +240,7 @@ void SwerveDriveController::handle_cmd_vel() {
             RCLCPP_WARN(get_node()->get_logger(), "Command velocity timed out, setting target velocity to 0");
         }
         cmd_vel_expired_ = true;
-        target_velocity_.set_speed(0, 0, 0);
+        target_velocity_.set_speed(0.0, 0.0, 0.0);
     }
     else {
         if(cmd_vel_expired_) {
@@ -245,7 +253,7 @@ void SwerveDriveController::handle_cmd_vel() {
     kinematics_->inverse_kinematics(target_velocity_, swerve_modules_vel_cmd_);
     for(int i = 0; i < num_modules_; i++) {
         steer_wheel_angle_cmd_[i] = std::atan2(swerve_modules_vel_cmd_[i].second, swerve_modules_vel_cmd_[i].first);
-        double wheel_radius = params.modules_info.swerve_modules_name_map.at(params_.swerve_modules_name[i]).wheel_radius;
+        double wheel_radius = params_.modules_info.swerve_modules_name_map.at(params_.swerve_modules_name[i]).wheel_radius;
         drive_wheel_vel_cmd_[i] = std::hypot(swerve_modules_vel_cmd_[i].first, swerve_modules_vel_cmd_[i].second) / wheel_radius;
     }
 
@@ -254,8 +262,8 @@ void SwerveDriveController::handle_cmd_vel() {
     {
         int i = 0;
         for(std::string module_name : params_.swerve_modules_name) {
-            loaned_command_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/position").set_value(steer_wheel_angle_cmd_[i]);
-            loaned_command_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/velocity").set_value(drive_wheel_vel_cmd_[i]);
+            loaned_command_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/position").get().set_value(steer_wheel_angle_cmd_[i]);
+            loaned_command_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/velocity").get().set_value(drive_wheel_vel_cmd_[i]);
             i++;
         }
     }
@@ -280,17 +288,17 @@ void SwerveDriveController::apply_kinematics_limits(Velocity& vel_in) {
 
     double commanded_acceleration;
 
-    commanded_acceleration = (vel_in.linear_x - prev_target_velocity_.linear_x) / loop_period_;
+    commanded_acceleration = (vel_in.linear_x - prev_target_velocity_.linear_x) / loop_period_.count();
     if(std::abs(commanded_acceleration) > params_.linear_accel_x) {
-        vel_in.linear_x = prev_target_velocity_.linear_x + std::copysign(params_.linear_accel_x, commanded_acceleration) * loop_period_;
+        vel_in.linear_x = prev_target_velocity_.linear_x + std::copysign(params_.linear_accel_x, commanded_acceleration) * loop_period_.count();
     }
-    commanded_acceleration = (vel_in.linear_y - prev_target_velocity_.linear_y) / loop_period_;
+    commanded_acceleration = (vel_in.linear_y - prev_target_velocity_.linear_y) / loop_period_.count();
     if(std::abs(commanded_acceleration) > params_.linear_accel_y) {
-        vel_in.linear_y = prev_target_velocity_.linear_y + std::copysign(params_.linear_accel_y, commanded_acceleration) * loop_period_;
+        vel_in.linear_y = prev_target_velocity_.linear_y + std::copysign(params_.linear_accel_y, commanded_acceleration) * loop_period_.count();
     }
-    commanded_acceleration = (vel_in.angular_z - prev_target_velocity_.angular_z) / loop_period_;
+    commanded_acceleration = (vel_in.angular_z - prev_target_velocity_.angular_z) / loop_period_.count();
     if(std::abs(commanded_acceleration) > params_.angular_accel_z) {
-        vel_in.angular_z = prev_target_velocity_.angular_z + std::copysign(params_.angular_accel_z, commanded_acceleration) * loop_period_;
+        vel_in.angular_z = prev_target_velocity_.angular_z + std::copysign(params_.angular_accel_z, commanded_acceleration) * loop_period_.count();
     }
 }
 
