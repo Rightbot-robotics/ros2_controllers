@@ -1,0 +1,108 @@
+swerve_drive_controller:
+
+  drive_frame_id: {
+    type: string,
+    default_value: "base_link",
+    description: "Name of the drive frame"
+  }
+  odom_frame_id: {
+    type: string,
+    default_value: "odom",
+    description: "Name of the odometry frame"
+  }
+  cmd_vel_topic: {
+    type: string,
+    default_value: "cmd_vel",
+    description: "Name of the command velocity topic"
+  }
+  cmd_vel_timeout: {
+    type: double,
+    default_value: 0.5,
+    description: "Command velocity timeout in seconds"
+  }
+  odom_topic: {
+    type: string,
+    default_value: "raw_odom",
+    description: "Name of the odometry topic"
+  }
+  publish_tf: {
+    type: bool,
+    default_value: false,
+    description: "Publish TF"
+  }
+  max_linear_vel_x: {
+    type: double,
+    default_value: 0.15,
+    description: "Maximum linear velocity in x direction in m/s"
+  }
+  max_linear_vel_y: {
+    type: double,
+    default_value: 0.15,
+    description: "Maximum linear velocity in y direction in m/s"
+  }
+  max_angular_vel_z: {
+    type: double,
+    default_value: 0.05,
+    description: "Maximum angular velocity in z direction in rad/s"
+  }
+  linear_accel_x: {
+    type: double,
+    description: "Linear acceleration in x direction in m/s^2"
+  }
+  linear_accel_y: {
+    type: double,
+    description: "Linear acceleration in y direction in m/s^2"
+  }
+  angular_accel_z: {
+    type: double,
+    description: "Angular acceleration in z direction in rad/s^2"
+  }
+  
+  swerve_modules_name: {
+    type: string_array,
+    default_value: [],
+    description: "Names of the swerve modules",
+    validation: {
+      unique<>: null
+    }
+  }
+
+  modules_info:
+    __map_swerve_modules_name:
+      steer_joint_name: {
+        type: string,
+        description: "Name of the steer joint"
+      }
+      drive_joint_name: {
+        type: string,
+        description: "Name of the drive joint"
+      }
+      wheel_position:
+        x: {
+          type: double,
+          description: "X position of the wheel with respect to drive center"
+        }
+        y: {
+          type: double,
+          description: "Y position of the wheel with respect to drive center"
+        }
+      wheel_radius: {
+        type: double,
+        description: "Wheel radius"
+      }
+      min_steer_angle: {
+        type: double,
+        description: "Minimum angle the steer joint can achieve with respect drive frame x axis"
+      }
+      max_steer_angle: {
+        type: double,
+        description: "Maximum angle the steer joint can achieve with respect drive frame x axis"
+      }
+      steer_status_fault_bit_index: {
+        type: int,
+        description: "Bit index of the steer status fault"
+      }
+      drive_status_fault_bit_index: {
+        type: int,
+        description: "Bit index of the drive status fault"
+      }
