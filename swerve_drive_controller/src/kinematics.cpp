@@ -10,7 +10,7 @@ SwerveDriveKinematics::SwerveDriveKinematics(std::vector<std::pair<double, doubl
     for(int i = 0; i < num_modules_; i++) {
         matrix_inverse_kinematics_(i*2, 0) = 1;
         matrix_inverse_kinematics_(i*2, 1) = 0;
-        matrix_inverse_kinematics_(i*2, 2) = module_positions[i].second;  // y_pos
+        matrix_inverse_kinematics_(i*2, 2) = -1 * module_positions[i].second;  // y_pos
 
         matrix_inverse_kinematics_(i*2+1, 0) = 0;
         matrix_inverse_kinematics_(i*2+1, 1) = 1;

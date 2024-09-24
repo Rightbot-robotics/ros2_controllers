@@ -13,6 +13,7 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
     rclcpp_lifecycle
     nav_msgs
     tf2_geometry_msgs
+    geometry_msgs
     generate_parameter_library
 )
 

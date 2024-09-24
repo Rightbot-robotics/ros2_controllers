@@ -125,6 +125,8 @@ controller_interface::CallbackReturn SwerveDriveController::on_activate(
         rclcpp::SystemDefaultsQoS()
     );
 
+    tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*get_node());
+
     return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -183,7 +185,8 @@ void SwerveDriveController::handle_odometry() {
     }
     
     for(int i = 0; i < num_modules_; i++) {
-        double wheel_dist_diff = curr_drive_wheel_angle_[i] - prev_drive_wheel_angle_[i];
+        double wheel_radius = params_.modules_info.swerve_modules_name_map.at(params_.swerve_modules_name[i]).wheel_radius;
+        double wheel_dist_diff = (curr_drive_wheel_angle_[i] - prev_drive_wheel_angle_[i]) * wheel_radius;
         swerve_modules_pos_diff_[i].first = wheel_dist_diff * std::cos(curr_steer_wheel_angle_[i]);
         swerve_modules_pos_diff_[i].second = wheel_dist_diff * std::sin(curr_steer_wheel_angle_[i]);
         swerve_modules_vel_[i].first = curr_drive_wheel_vel_[i] * std::cos(curr_steer_wheel_angle_[i]);
@@ -196,6 +199,9 @@ void SwerveDriveController::handle_odometry() {
     odom_processor_->update_odometry(curr_base_pos_diff_, curr_base_velocity_);
 
     odom_pub_->publish(odom_processor_->odom_msg);
+    if(params_.publish_tf) {
+        tf_broadcaster_->sendTransform(odom_processor_->transform_msg);
+    }
 
     if(curr_base_velocity_.is_zero()) {
         if(!base_at_zero_vel_) {
@@ -245,6 +251,7 @@ void SwerveDriveController::handle_cmd_vel() {
     else {
         if(cmd_vel_expired_) {
             RCLCPP_INFO(get_node()->get_logger(), "Started receiving new command velocity");
+            RCLCPP_INFO(get_node()->get_logger(), "Target velocity: x-%f, y-%f, w-%f", target_velocity_.linear_x, target_velocity_.linear_y, target_velocity_.angular_z);
         }
         cmd_vel_expired_ = false;
     }
