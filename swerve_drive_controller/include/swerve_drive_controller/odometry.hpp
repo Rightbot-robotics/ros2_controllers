@@ -8,6 +8,7 @@
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <cmath>
+#include <string>
 
 namespace swerve_drive_controller {
 
@@ -16,10 +17,12 @@ public:
     nav_msgs::msg::Odometry odom_msg;
     geometry_msgs::msg::TransformStamped transform_msg;
     
-    OdometryProcessor();
+    OdometryProcessor(std::string base_frame, std::string odom_frame);
     void update_odometry(Velocity& base_pos_diff, Velocity& base_vel);
 
 private:
+    std::string base_frame_;
+    std::string odom_frame_;
     double x_;
     double y_;
     double theta_;

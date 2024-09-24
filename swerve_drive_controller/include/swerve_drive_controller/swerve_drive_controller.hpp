@@ -83,7 +83,7 @@ private:
 
     bool update_loop_first_pass_;
     std::chrono::time_point<std::chrono::system_clock> curr_loop_time_, prev_loop_time_;
-    std::chrono::duration<double> loop_period_;
+    std::chrono::duration<double> loop_period_, max_loop_period_;
     std::shared_ptr<ParamListener> param_listener_;
     Params params_;
 

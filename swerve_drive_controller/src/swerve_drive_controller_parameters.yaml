@@ -60,6 +60,11 @@ swerve_drive_controller:
     default_value: 0.05,
     description: "Angular acceleration in z direction in rad/s^2"
   }
+  max_loop_period: {
+    type: double,
+    default_value: 0.1,
+    description: "Maximum time elapsed for the update loop"
+  }
   
   swerve_modules_name: {
     type: string_array,

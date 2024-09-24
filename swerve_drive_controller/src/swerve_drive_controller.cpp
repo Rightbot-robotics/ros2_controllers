@@ -22,6 +22,7 @@ controller_interface::CallbackReturn SwerveDriveController::on_init() {
 
     base_frame_id_ = params_.drive_frame_id;
     odom_frame_id_ = params_.odom_frame_id;
+    max_loop_period_ = std::chrono::duration<double>(params_.max_loop_period);
 
     num_modules_ = params_.swerve_modules_name.size();
     std::vector<std::pair<double, double>> module_positions;
@@ -32,7 +33,7 @@ controller_interface::CallbackReturn SwerveDriveController::on_init() {
     }
 
     kinematics_ = std::make_shared<SwerveDriveKinematics>(module_positions);
-    odom_processor_ = std::make_shared<OdometryProcessor>();
+    odom_processor_ = std::make_shared<OdometryProcessor>(base_frame_id_, odom_frame_id_);
 
     cmd_vel_expiry_time_ = std::chrono::system_clock::now();
     cmd_velocity_ = Velocity();
@@ -144,6 +145,14 @@ controller_interface::return_type SwerveDriveController::update(const rclcpp::Ti
 
     curr_loop_time_ = std::chrono::system_clock::now();
     loop_period_ = std::chrono::duration<double>(curr_loop_time_ - prev_loop_time_);
+    if(loop_period_ > max_loop_period_) {
+        RCLCPP_WARN(
+            get_node()->get_logger(),
+            "Loop period is too high!!!. Loop period: %f",
+            loop_period_.count()
+        );
+        loop_period_ = max_loop_period_;
+    }
 
     update_base_state_variables();
     handle_odometry();

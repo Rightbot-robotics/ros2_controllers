@@ -3,10 +3,12 @@
 
 namespace swerve_drive_controller {
 
-OdometryProcessor::OdometryProcessor() {
+OdometryProcessor::OdometryProcessor(std::string base_frame, std::string odom_frame) {
     x_ = 0.0;
     y_ = 0.0;
     theta_ = 0.0;
+    base_frame_ = base_frame;
+    odom_frame_ = odom_frame;
     odom_msg = nav_msgs::msg::Odometry();
     transform_msg = geometry_msgs::msg::TransformStamped();
     clock_ = rclcpp::Clock(RCL_ROS_TIME);
@@ -27,8 +29,8 @@ void OdometryProcessor::update_odometry(Velocity& base_pos_diff, Velocity& base_
     theta_ += dtheta_;
 
     odom_msg.header.stamp = clock_.now();
-    odom_msg.header.frame_id = "odom";
-    odom_msg.child_frame_id = "base_link";
+    odom_msg.header.frame_id = odom_frame_;
+    odom_msg.child_frame_id = base_frame_;
     
     odom_msg.pose.pose.position.x = x_;
     odom_msg.pose.pose.position.y = y_;
