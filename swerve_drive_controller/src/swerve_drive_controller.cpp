@@ -421,7 +421,7 @@ void SwerveDriveController::apply_joint_limits(std::vector<double>& steer_angle_
     }
 
     apply_steer_command_limits(steer_angle_cmd, drive_vel_cmd);
-    // apply_drive_command_limits(drive_vel_cmd);
+    apply_drive_command_limits(drive_vel_cmd);
 
     prev_steer_angle_cmd_ = steer_angle_cmd;
     prev_drive_wheel_vel_cmd_ = drive_vel_cmd;
@@ -498,7 +498,7 @@ void SwerveDriveController::apply_drive_command_limits(std::vector<double>& driv
     }
     double proportional_accel, commanded_accel;
     for(int i = 0; i < num_modules_; i++) {
-        proportional_accel = (prev_drive_wheel_vel_cmd_[i] / max_vel_diff) * params_.max_drive_acceleration;
+        proportional_accel = (abs(drive_vel_cmd[i] - prev_drive_wheel_vel_cmd_[i]) / max_vel_diff) * params_.max_drive_acceleration;
         commanded_accel = (drive_vel_cmd[i] - prev_drive_wheel_vel_cmd_[i]) / loop_period_.count();
         if(std::abs(commanded_accel) > proportional_accel) {
             drive_vel_cmd[i] = prev_drive_wheel_vel_cmd_[i] + std::copysign(proportional_accel, commanded_accel) * loop_period_.count();
