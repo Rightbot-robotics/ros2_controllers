@@ -65,6 +65,26 @@ swerve_drive_controller:
     default_value: 0.1,
     description: "Maximum time elapsed for the update loop"
   }
+  max_steer_angle_difference: {
+    type: double,
+    default_value: 0.349066,
+    description: "Maximum difference between the current steer angle and the desired steer angle"
+  }
+  max_steer_velocity: {
+    type: double,
+    default_value: 0.785398,
+    description: "Maximum velocity of the steer joint in rad/s"
+  }
+  steer_angle_reached_threshold: {
+    type: double,
+    default_value: 0.087266,
+    description: "Threshold for the steer angle reached in rad"
+  }
+  max_drive_acceleration: {
+    type: double,
+    default_value: 10.0,
+    description: "Maximum acceleration of the drive joint in rad/s^2"
+  }
   
   swerve_modules_name: {
     type: string_array,
@@ -104,6 +124,14 @@ swerve_drive_controller:
       max_steer_angle: {
         type: double,
         description: "Maximum angle the steer joint can achieve with respect drive frame x axis"
+      }
+      max_steer_velocity: {
+        type: double,
+        description: "Maximum velocity of the steer joint in rad/s"
+      }
+      max_drive_velocity: {
+        type: double,
+        description: "Maximum velocity of the drive joint in rad/s"
       }
       steer_status_fault_bit_index: {
         type: int,

@@ -78,6 +78,11 @@ private:
     void update_base_state_variables();
     void handle_cmd_vel();
     void apply_kinematics_limits(Velocity& vel_in);
+    void apply_joint_limits(std::vector<double>& steer_angle_cmd_, std::vector<double>& drive_vel_cmd_);
+    void apply_steer_command_limits(std::vector<double>& steer_angle_cmd, std::vector<double>& drive_vel_cmd);
+    void apply_drive_command_limits(std::vector<double>& drive_vel_cmd);
+
+    double epsilon_ = 1e-6;
 
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
@@ -115,8 +120,10 @@ private:
 
 
     std::vector<std::pair<double, double>> swerve_modules_vel_cmd_;
-    std::vector<double> steer_wheel_angle_cmd_;
-    std::vector<double> drive_wheel_vel_cmd_;
+    std::vector<double> steer_angle_cmd_, prev_steer_angle_cmd_;
+    std::vector<double> drive_wheel_vel_cmd_, prev_drive_wheel_vel_cmd_;
+
+    std::string large_angle_diff_handling_phase_;
 };
 
 }  // namespace swerve_drive_controller

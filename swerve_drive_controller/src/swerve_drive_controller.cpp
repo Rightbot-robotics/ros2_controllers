@@ -46,6 +46,8 @@ controller_interface::CallbackReturn SwerveDriveController::on_init() {
     cmd_vel_expired_ = true;
     base_at_zero_vel_ = true;
 
+    large_angle_diff_handling_phase_ = "none";
+
     return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -220,7 +222,7 @@ void SwerveDriveController::handle_odometry() {
     }
     else {
         if(base_at_zero_vel_) {
-            RCLCPP_INFO(get_node()->get_logger(), "Drive started moving again");
+            RCLCPP_INFO(get_node()->get_logger(), "Drive started moving");
         }
         base_at_zero_vel_ = false;
     }
@@ -232,9 +234,11 @@ void SwerveDriveController::handle_cmd_vel() {
     if(update_loop_first_pass_) {
         for(int i = 0; i < num_modules_; i++) {
             swerve_modules_vel_cmd_.emplace_back(0, 0);
-            steer_wheel_angle_cmd_.emplace_back(0);
+            steer_angle_cmd_.emplace_back(0);
             drive_wheel_vel_cmd_.emplace_back(0);
+            prev_drive_wheel_vel_cmd_.emplace_back(0);
         }
+        prev_steer_angle_cmd_ = curr_steer_wheel_angle_;
         return;
     }
 
@@ -266,19 +270,30 @@ void SwerveDriveController::handle_cmd_vel() {
     }
 
     apply_kinematics_limits(target_velocity_);
+    prev_target_velocity_ = target_velocity_;
+
     kinematics_->inverse_kinematics(target_velocity_, swerve_modules_vel_cmd_);
     for(int i = 0; i < num_modules_; i++) {
-        steer_wheel_angle_cmd_[i] = std::atan2(swerve_modules_vel_cmd_[i].second, swerve_modules_vel_cmd_[i].first);
+        steer_angle_cmd_[i] = std::atan2(swerve_modules_vel_cmd_[i].second, swerve_modules_vel_cmd_[i].first);
+        if(swerve_modules_vel_cmd_[i].first < 0 && std::abs(swerve_modules_vel_cmd_[i].second) < epsilon_) {
+            if(curr_steer_wheel_angle_[i] < 0) {
+                steer_angle_cmd_[i] = -1 * M_PI;
+            }
+            else {
+                steer_angle_cmd_[i] = M_PI;
+            }
+        }
         double wheel_radius = params_.modules_info.swerve_modules_name_map.at(params_.swerve_modules_name[i]).wheel_radius;
         drive_wheel_vel_cmd_[i] = std::hypot(swerve_modules_vel_cmd_[i].first, swerve_modules_vel_cmd_[i].second) / wheel_radius;
     }
 
-    prev_target_velocity_ = target_velocity_;
+    apply_joint_limits(steer_angle_cmd_, drive_wheel_vel_cmd_);
+
 
     {
         int i = 0;
         for(std::string module_name : params_.swerve_modules_name) {
-            loaned_command_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/position").get().set_value(steer_wheel_angle_cmd_[i]);
+            loaned_command_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/position").get().set_value(steer_angle_cmd_[i]);
             loaned_command_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/velocity").get().set_value(drive_wheel_vel_cmd_[i]);
             i++;
         }
@@ -315,6 +330,179 @@ void SwerveDriveController::apply_kinematics_limits(Velocity& vel_in) {
     commanded_acceleration = (vel_in.angular_z - prev_target_velocity_.angular_z) / loop_period_.count();
     if(std::abs(commanded_acceleration) > params_.angular_accel_z) {
         vel_in.angular_z = prev_target_velocity_.angular_z + std::copysign(params_.angular_accel_z, commanded_acceleration) * loop_period_.count();
+    }
+}
+
+void SwerveDriveController::apply_joint_limits(std::vector<double>& steer_angle_cmd, std::vector<double>& drive_vel_cmd) {
+    bool zero_vel_command = true;
+    for(int i = 0; i < num_modules_; i++) {
+        if(std::abs(drive_vel_cmd[i]) > epsilon_) {
+            zero_vel_command = false;
+            break;
+        }
+    }
+
+    if(zero_vel_command) {
+        steer_angle_cmd = prev_steer_angle_cmd_;
+    }
+
+    double overall_velocity_reduction_factor = 1.0;
+    for(int i = 0; i < num_modules_; i++) {
+        double curr_angle = steer_angle_cmd[i];
+        double alternate_angle;
+        if(curr_angle < 0)
+            alternate_angle = curr_angle + M_PI;
+        else if(curr_angle > 0)
+            alternate_angle = curr_angle - M_PI;
+        else {
+            if(curr_steer_wheel_angle_[i] < 0)
+                alternate_angle = -1 * M_PI;
+            else
+                alternate_angle = M_PI;
+        }
+
+        bool curr_angle_valid = (
+            curr_angle >= params_.modules_info.swerve_modules_name_map.at(params_.swerve_modules_name[i]).min_steer_angle &&
+            curr_angle <= params_.modules_info.swerve_modules_name_map.at(params_.swerve_modules_name[i]).max_steer_angle
+        );
+        bool alternate_angle_valid = (
+            alternate_angle >= params_.modules_info.swerve_modules_name_map.at(params_.swerve_modules_name[i]).min_steer_angle &&
+            alternate_angle <= params_.modules_info.swerve_modules_name_map.at(params_.swerve_modules_name[i]).max_steer_angle
+        );
+        bool consider_curr_angle = true;
+
+        if(!curr_angle_valid && !alternate_angle_valid) {
+            RCLCPP_ERROR(get_node()->get_logger(), "Joint angle %f is out of bounds for %s", curr_angle, params_.swerve_modules_name[i].c_str());
+            for(int j = 0; j < num_modules_; j++) {
+                steer_angle_cmd[j] = prev_steer_angle_cmd_[j];
+                drive_vel_cmd[j] = 0;
+            }
+            break;
+        }
+        else if(curr_angle_valid && alternate_angle_valid) {
+            double curr_angle_diff = std::abs(curr_angle - curr_steer_wheel_angle_[i]);
+            double alternate_angle_diff = std::abs(alternate_angle - curr_steer_wheel_angle_[i]);
+            if(std::abs(curr_angle_diff - alternate_angle_diff) < 0.0872665 || curr_angle_diff < alternate_angle_diff) {
+                consider_curr_angle = true;
+            }
+            else {
+                consider_curr_angle = false;
+            }
+        }
+        else if(curr_angle_valid && !alternate_angle_valid) {
+            consider_curr_angle = true;
+        }
+        else if(!curr_angle_valid && alternate_angle_valid) {
+            consider_curr_angle = false;
+        }
+
+        if(consider_curr_angle) {
+            steer_angle_cmd[i] = curr_angle;
+        }
+        else {
+            steer_angle_cmd[i] = alternate_angle;
+            drive_vel_cmd[i] *= -1.0;
+        }
+
+        double curr_velocity_reduction_factor = std::abs(params_.modules_info.swerve_modules_name_map.at(params_.swerve_modules_name[i]).max_drive_velocity / drive_vel_cmd[i]);
+        if(curr_velocity_reduction_factor < 1.0) {
+            RCLCPP_WARN(get_node()->get_logger(), "%s exceeds max velocity. Requested velocity: %f rad/s, Max velocity: %f rad/s", params_.swerve_modules_name[i].c_str(), drive_vel_cmd[i], params_.modules_info.swerve_modules_name_map.at(params_.swerve_modules_name[i]).max_drive_velocity);
+            if (curr_velocity_reduction_factor < overall_velocity_reduction_factor) {
+                overall_velocity_reduction_factor = curr_velocity_reduction_factor;
+            }
+        }
+    }
+
+    if(overall_velocity_reduction_factor < 1.0) {
+        RCLCPP_INFO(get_node()->get_logger(), "Overall velocity reduction factor: %f", overall_velocity_reduction_factor);
+        for(int i = 0; i < num_modules_; i++) {
+            drive_vel_cmd[i] *= overall_velocity_reduction_factor;
+        }
+    }
+
+    apply_steer_command_limits(steer_angle_cmd, drive_vel_cmd);
+    // apply_drive_command_limits(drive_vel_cmd);
+
+    prev_steer_angle_cmd_ = steer_angle_cmd;
+    prev_drive_wheel_vel_cmd_ = drive_vel_cmd;
+}
+
+void SwerveDriveController::apply_steer_command_limits(std::vector<double>& steer_angle_cmd, std::vector<double>& drive_vel_cmd) {
+    
+    bool detected_large_angle_difference = false;
+    for(int i = 0; i < num_modules_; i++) {
+        if(std::abs(steer_angle_cmd[i] - prev_steer_angle_cmd_[i]) > params_.max_steer_angle_difference) {
+            detected_large_angle_difference = true;
+            break;
+        }
+    }
+
+    if(detected_large_angle_difference && large_angle_diff_handling_phase_ == "none") {
+        large_angle_diff_handling_phase_ = "slowdown";
+        RCLCPP_INFO(get_node()->get_logger(), "Large angle difference detected");
+        RCLCPP_INFO(get_node()->get_logger(), "Large angle difference handling: Entering slowdown phase");
+    }
+
+    if(large_angle_diff_handling_phase_ == "slowdown") {
+        if(base_at_zero_vel_) {
+            RCLCPP_INFO(get_node()->get_logger(), "Large angle difference handling: Entering angle correction phase");
+            large_angle_diff_handling_phase_ = "correction";
+        }
+        else {
+            for(int i = 0; i < num_modules_; i++) {
+                steer_angle_cmd[i] = prev_steer_angle_cmd_[i];
+                drive_vel_cmd[i] = 0;
+            }
+        }
+    }
+
+    if(large_angle_diff_handling_phase_ == "correction") {
+        bool target_angles_reached = true;
+        for(int i = 0; i < num_modules_; i++) {
+            if(std::abs(steer_angle_cmd[i] - curr_steer_wheel_angle_[i]) > params_.steer_angle_reached_threshold) {
+                target_angles_reached = false;
+                break;
+            }
+        }
+
+        if(target_angles_reached) {
+            RCLCPP_INFO(get_node()->get_logger(), "Large angle difference handling: Target angles reached, entering normal operation phase");
+            large_angle_diff_handling_phase_ = "none";
+        }
+        else {
+            for(int i = 0; i < num_modules_; i++) {
+                drive_vel_cmd[i] = 0;
+            }
+        }
+    }
+
+    if(!detected_large_angle_difference && large_angle_diff_handling_phase_ == "none") {
+        double commanded_steer_vel;
+        for(int i = 0; i < num_modules_; i++) {
+            commanded_steer_vel = (steer_angle_cmd[i] - prev_steer_angle_cmd_[i]) / loop_period_.count();
+            if(std::abs(commanded_steer_vel) > params_.max_steer_velocity) {
+                steer_angle_cmd[i] = prev_steer_angle_cmd_[i] + std::copysign(params_.max_steer_velocity, commanded_steer_vel) * loop_period_.count();
+            }
+        }
+    }
+}
+
+void SwerveDriveController::apply_drive_command_limits(std::vector<double>& drive_vel_cmd) {
+    double max_vel_diff = std::abs(drive_vel_cmd[0] - prev_drive_wheel_vel_cmd_[0]);
+    double curr_vel_diff;
+    for(int i = 0; i < num_modules_; i++) {
+        curr_vel_diff = abs(drive_vel_cmd[i] - prev_drive_wheel_vel_cmd_[i]);
+        if(curr_vel_diff > max_vel_diff) {
+            max_vel_diff = curr_vel_diff;
+        }
+    }
+    double proportional_accel, commanded_accel;
+    for(int i = 0; i < num_modules_; i++) {
+        proportional_accel = (prev_drive_wheel_vel_cmd_[i] / max_vel_diff) * params_.max_drive_acceleration;
+        commanded_accel = (drive_vel_cmd[i] - prev_drive_wheel_vel_cmd_[i]) / loop_period_.count();
+        if(std::abs(commanded_accel) > proportional_accel) {
+            drive_vel_cmd[i] = prev_drive_wheel_vel_cmd_[i] + std::copysign(proportional_accel, commanded_accel) * loop_period_.count();
+        }
     }
 }
 
