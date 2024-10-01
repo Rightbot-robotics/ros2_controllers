@@ -48,6 +48,22 @@ controller_interface::CallbackReturn SwerveDriveController::on_init() {
 
     large_angle_diff_handling_phase_ = "none";
 
+    steer_fault_state_ = std::vector<bool>(num_modules_, false);
+    prev_steer_fault_state_ = std::vector<bool>(num_modules_, false);
+    steer_connection_break_state_ = std::vector<bool>(num_modules_, false);
+    prev_steer_connection_break_state_ = std::vector<bool>(num_modules_, false);
+    drive_fault_state_ = std::vector<bool>(num_modules_, false);
+    prev_drive_fault_state_ = std::vector<bool>(num_modules_, false);
+    drive_connection_break_state_ = std::vector<bool>(num_modules_, false);
+    prev_drive_connection_break_state_ = std::vector<bool>(num_modules_, false);
+    base_is_operational_ = true;
+
+    steer_functional_state_ = std::vector<int>(num_modules_, 0);
+    drive_functional_state_ = std::vector<int>(num_modules_, 0);
+
+    executing_halt_task_ = false;
+    halt_task_id_ = 0;
+
     return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -59,6 +75,9 @@ controller_interface::InterfaceConfiguration SwerveDriveController::command_inte
         std::string drive_joint = params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name;
         conf_names.push_back(steer_joint + "/position");
         conf_names.push_back(drive_joint + "/velocity");
+        
+        conf_names.push_back(steer_joint + "/function_halt");
+        conf_names.push_back(drive_joint + "/function_halt");
     }
     return {controller_interface::interface_configuration_type::INDIVIDUAL, conf_names};
 }
@@ -72,6 +91,14 @@ controller_interface::InterfaceConfiguration SwerveDriveController::state_interf
         conf_names.push_back(steer_joint + "/position");
         conf_names.push_back(drive_joint + "/position");
         conf_names.push_back(drive_joint + "/velocity");
+        
+        conf_names.push_back(steer_joint + "/fault");
+        conf_names.push_back(steer_joint + "/connection_break");
+        conf_names.push_back(steer_joint + "/functional_state");
+        
+        conf_names.push_back(drive_joint + "/fault");
+        conf_names.push_back(drive_joint + "/connection_break");
+        conf_names.push_back(drive_joint + "/functional_state");
     }
     return {controller_interface::interface_configuration_type::INDIVIDUAL, conf_names};
 }
@@ -85,10 +112,20 @@ controller_interface::CallbackReturn SwerveDriveController::on_configure(
 
         required_command_interfaces_.push_back(steer_joint + "/position");
         required_command_interfaces_.push_back(drive_joint + "/velocity");
+        required_command_interfaces_.push_back(drive_joint + "/function_halt");
+        required_command_interfaces_.push_back(steer_joint + "/function_halt");
         
         required_state_interfaces_.push_back(steer_joint + "/position");
         required_state_interfaces_.push_back(drive_joint + "/position");
         required_state_interfaces_.push_back(drive_joint + "/velocity");
+        
+        required_state_interfaces_.push_back(steer_joint + "/fault");
+        required_state_interfaces_.push_back(steer_joint + "/connection_break");
+        required_state_interfaces_.push_back(steer_joint + "/functional_state");
+        
+        required_state_interfaces_.push_back(drive_joint + "/fault");
+        required_state_interfaces_.push_back(drive_joint + "/connection_break");
+        required_state_interfaces_.push_back(drive_joint + "/functional_state");
     }
 
     return controller_interface::CallbackReturn::SUCCESS;
@@ -181,7 +218,75 @@ void SwerveDriveController::update_base_state_variables() {
         curr_steer_wheel_angle_[i] = loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/position").get().get_value();
         curr_drive_wheel_angle_[i] = loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/position").get().get_value();
         curr_drive_wheel_vel_[i] = loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/velocity").get().get_value();
+        steer_fault_state_[i] = static_cast<bool>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/fault").get().get_value());
+        drive_fault_state_[i] = static_cast<bool>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/fault").get().get_value());
+        steer_connection_break_state_[i] = static_cast<bool>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/connection_break").get().get_value());
+        drive_connection_break_state_[i] = static_cast<bool>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/connection_break").get().get_value());
+        steer_functional_state_[i] = static_cast<int>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/functional_state").get().get_value());
+        drive_functional_state_[i] = static_cast<int>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/functional_state").get().get_value());
         i++;
+    }
+}
+
+void SwerveDriveController::handle_base_faults() {
+    bool abnormal_state_detected = false;
+    
+    for(int i = 0; i < num_modules_; i++) {
+        if(steer_fault_state_[i] != prev_steer_fault_state_[i]) {
+            if(steer_fault_state_[i]) {
+                RCLCPP_ERROR("Steer joint of %s module went into fault state", params.swerve_modules_name[i].c_str());
+                abnormal_state_detected = true;
+            }
+            else{
+                RCLCPP_INFO("Steer joint of %s module changed to normal state", params.swerve_modules_name[i].c_str());
+            }
+        }
+        if(drive_fault_state_[i] != prev_drive_fault_state_[i]) {
+            if(steer_fault_state_[i]) {
+                RCLCPP_ERROR("Drive joint of %s module went into fault state", params.swerve_modules_name[i].c_str());
+                abnormal_state_detected = true;
+            }
+            else{
+                RCLCPP_INFO("Drive joint of %s module changed to normal state", params.swerve_modules_name[i].c_str());
+            }
+        }
+    }
+
+    for(int i = 0; i < num_modules_; i++) {
+        if(steer_connection_break_state_[i] != prev_steer_connection_break_state_[i]) {
+            if(steer_connection_break_state_[i]) {
+                RCLCPP_ERROR("Steer joint of %s module went into connection break state", params.swerve_modules_name[i].c_str());
+                abnormal_state_detected = true;
+            }
+            else{
+                RCLCPP_INFO("Steer joint of %s module changed to normal state", params.swerve_modules_name[i].c_str());
+            }
+        }
+        if(drive_connection_break_state_[i] != prev_drive_connection_break_state_[i]) {
+            if(drive_connection_break_state_[i]) {
+                RCLCPP_ERROR("Drive joint of %s module went into connection break state", params.swerve_modules_name[i].c_str());
+                abnormal_state_detected = true;
+            }
+            else{
+                RCLCPP_INFO("Drive joint of %s module changed to normal state", params.swerve_modules_name[i].c_str());
+            }
+        }
+    }
+
+    if(abnormal_state_detected && base_is_operational_) {
+        RCLCPP_INFO(get_node()->get_logger(), "Sending hard stop to all motors");
+        auto halt_task = get_new_halt_task();
+        halt_task->type = "HARD_STOP";
+        {
+            std::lock_guard<std::mutex> lock(halt_tasks_mutex_);
+            halt_tasks_.push(halt_task);
+        }
+        base_is_operational_ = false;
+    }
+
+    if(!abnormal_state_detected && !base_is_operational_) {
+        RCLCPP_INFO(get_node()->get_logger(), "Setting bot state as normal");
+        base_is_operational_ = true;
     }
 }
 
@@ -504,6 +609,74 @@ void SwerveDriveController::apply_drive_command_limits(std::vector<double>& driv
             drive_vel_cmd[i] = prev_drive_wheel_vel_cmd_[i] + std::copysign(proportional_accel, commanded_accel) * loop_period_.count();
         }
     }
+}
+
+void SwerveDriveController::handle_halt_task() {
+    if(!executing_halt_task_)
+    {
+        std::lock_guard lk(halt_tasks_mutex_);
+        if(!halt_tasks_.empty()) {
+            current_halt_task_.reset();
+            current_halt_task_ = halt_tasks_.pop();
+            executing_halt_task_ = true;
+        }
+    }
+
+    if(current_halt_task_ == nullptr) {
+        return;
+    }
+
+    if(!current_halt_task_->initialized) {
+        RCLCPP_INFO(get_node()->get_logger(), "Executing halt task, task id: %d, task type: %s", current_halt_task_->id, current_halt_task_->type.c_str());
+        RCLCPP_INFO(get_node()->get_logger(), "Setting halt command interface for all swerve modules");
+        for(int i = 0; i < num_modules_; i++) {
+            std::string steer_joint = params_.modules_info.swerve_modules_name_map.at(params_.swerve_modules_name[i]).steer_joint_name;
+            std::string drive_joint = params_.modules_info.swerve_modules_name_map.at(params_.swerve_modules_name[i]).drive_joint_name;
+            loaned_command_interfaces_.at(steer_joint + "/function_halt").get().set_value(halt_cmd_to_int_map_.at(current_halt_task_->type));
+            loaned_command_interfaces_.at(drive_joint + "/function_halt").get().set_value(halt_cmd_to_int_map_.at(current_halt_task_->type));
+        }
+        RCLCPP_INFO(get_node()->get_logger(), "Halt command interface set for all swerve modules");
+        current_halt_task_->initialized = true;
+        return;
+    }
+
+    bool halt_task_complete = true;
+    RCLCPP_INFO_THROTTLE(get_node()->get_logger(), *(get_node())->get_clock(), 1000, "Waiting for halt task to complete, task id: %d, task type: %s", current_halt_task_->id, current_halt_task_->type.c_str());
+    for(int i = 0; i < num_modules_; i++) {
+        if(!steer_connection_break_state_[i]) {
+            if(steer_functional_state_[i] != halt_cmd_to_int_map_.at(current_halt_task_->type)) {
+                halt_task_complete = false;
+                break;
+            }
+        }
+
+        if(!drive_connection_break_state_[i]) {
+            if(drive_functional_state_[i] != halt_cmd_to_int_map_.at(current_halt_task_->type)) {
+                halt_task_complete = false;
+                break;
+            }
+        }
+    }
+
+    if(halt_task_complete) {
+        RCLCPP_INFO(get_node()->get_logger(), "Halt task complete, task id: %d, task type: %s", current_halt_task_->id, current_halt_task_->type.c_str());
+        {
+            std::lock_guard lk(current_halt_task_->mutex);
+            current_halt_task_->response_available = true;
+            current_halt_task_->task_successful = true;
+            current_halt_task_->response = "SUCCESSFUL";
+        }
+        current_halt_task_->cv.notify_all();
+        current_halt_task_.reset();
+        executing_halt_task_ = false;
+    }
+}
+
+std::shared_ptr<HaltTask> SwerveDriveController::get_new_halt_task() {
+    std::shared_ptr<HaltTask> new_halt_task = std::make_shared<HaltTask>();
+    new_halt_task->id = halt_task_id_;
+    halt_task_id_++;
+    return new_halt_task;
 }
 
 }  // namespace swerve_drive_controller

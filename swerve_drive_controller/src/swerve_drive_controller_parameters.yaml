@@ -133,11 +133,3 @@ swerve_drive_controller:
         type: double,
         description: "Maximum velocity of the drive joint in rad/s"
       }
-      steer_status_fault_bit_index: {
-        type: int,
-        description: "Bit index of the steer status fault"
-      }
-      drive_status_fault_bit_index: {
-        type: int,
-        description: "Bit index of the drive status fault"
-      }

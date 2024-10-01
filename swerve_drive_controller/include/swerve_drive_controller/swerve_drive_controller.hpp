@@ -7,6 +7,8 @@
 #include <memory>
 #include <mutex>
 #include <chrono>
+#inclcude <queue>
+#include <condition_variable>
 #include <geometry_msgs/msg/twist.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include "tf2_ros/transform_broadcaster.h"
@@ -41,6 +43,17 @@ bool get_loaned_interfaces(
         all_interface_found = all_interface_found && found_current_interface;
     }
     return all_interface_found;
+}
+
+struct HaltTask {
+    int id;
+    std::string type = "";
+    bool response_available = false;
+    bool task_successful = false;
+    bool initialized = false;
+    std::string response = "";
+    std::mutex mutex;
+    std::condition_variable cv;
 }
 
 class SwerveDriveController
@@ -81,6 +94,9 @@ private:
     void apply_joint_limits(std::vector<double>& steer_angle_cmd_, std::vector<double>& drive_vel_cmd_);
     void apply_steer_command_limits(std::vector<double>& steer_angle_cmd, std::vector<double>& drive_vel_cmd);
     void apply_drive_command_limits(std::vector<double>& drive_vel_cmd);
+    void handle_base_faults();
+    void handle_halt_task();
+    std::shared_ptr<HaltTask> get_new_halt_task();
 
     double epsilon_ = 1e-6;
 
@@ -124,6 +140,25 @@ private:
     std::vector<double> drive_wheel_vel_cmd_, prev_drive_wheel_vel_cmd_;
 
     std::string large_angle_diff_handling_phase_;
+
+    std::vector<bool> steer_fault_state_, steer_connection_break_state_;
+    std::vector<bool> prev_steer_fault_state_, prev_steer_connection_break_state_;
+    std::vector<bool> drive_fault_state_, drive_connection_break_state_;
+    std::vector<bool> prev_drive_fault_state_, prev_drive_connection_break_state_;
+    std::vector<int> steer_functional_state_;
+    std::vector<int> drive_functional_state_;
+    bool base_is_operational_;
+
+    std::map<std::string, int> halt_cmd_to_int_map_ = {
+        {"OPERATIONAL", 0},
+        {"SOFT_STOP", 1},
+        {"HARD_STOP", 2}
+    };
+    std::queue<std::shared_ptr<HaltTask>> halt_tasks_;
+    std::shared_ptr<HaltTask> current_halt_task_;
+    std::mutex halt_tasks_mutex_;
+    bool executing_halt_task_;
+    int halt_task_id_;
 };
 
 }  // namespace swerve_drive_controller
