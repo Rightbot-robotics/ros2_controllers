@@ -7,7 +7,7 @@
 #include <memory>
 #include <mutex>
 #include <chrono>
-#inclcude <queue>
+#include <queue>
 #include <condition_variable>
 #include <geometry_msgs/msg/twist.hpp>
 #include <nav_msgs/msg/odometry.hpp>
@@ -54,7 +54,7 @@ struct HaltTask {
     std::string response = "";
     std::mutex mutex;
     std::condition_variable cv;
-}
+};
 
 class SwerveDriveController
     : public controller_interface::ControllerInterface

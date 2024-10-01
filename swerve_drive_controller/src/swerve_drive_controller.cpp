@@ -234,20 +234,20 @@ void SwerveDriveController::handle_base_faults() {
     for(int i = 0; i < num_modules_; i++) {
         if(steer_fault_state_[i] != prev_steer_fault_state_[i]) {
             if(steer_fault_state_[i]) {
-                RCLCPP_ERROR("Steer joint of %s module went into fault state", params.swerve_modules_name[i].c_str());
+                RCLCPP_ERROR(get_node()->get_logger(), "Steer joint of %s module went into fault state", params_.swerve_modules_name[i].c_str());
                 abnormal_state_detected = true;
             }
             else{
-                RCLCPP_INFO("Steer joint of %s module changed to normal state", params.swerve_modules_name[i].c_str());
+                RCLCPP_INFO(get_node()->get_logger(), "Steer joint of %s module changed to normal state", params_.swerve_modules_name[i].c_str());
             }
         }
         if(drive_fault_state_[i] != prev_drive_fault_state_[i]) {
             if(steer_fault_state_[i]) {
-                RCLCPP_ERROR("Drive joint of %s module went into fault state", params.swerve_modules_name[i].c_str());
+                RCLCPP_ERROR(get_node()->get_logger(), "Drive joint of %s module went into fault state", params_.swerve_modules_name[i].c_str());
                 abnormal_state_detected = true;
             }
             else{
-                RCLCPP_INFO("Drive joint of %s module changed to normal state", params.swerve_modules_name[i].c_str());
+                RCLCPP_INFO(get_node()->get_logger(), "Drive joint of %s module changed to normal state", params_.swerve_modules_name[i].c_str());
             }
         }
     }
@@ -255,20 +255,20 @@ void SwerveDriveController::handle_base_faults() {
     for(int i = 0; i < num_modules_; i++) {
         if(steer_connection_break_state_[i] != prev_steer_connection_break_state_[i]) {
             if(steer_connection_break_state_[i]) {
-                RCLCPP_ERROR("Steer joint of %s module went into connection break state", params.swerve_modules_name[i].c_str());
+                RCLCPP_ERROR(get_node()->get_logger(), "Steer joint of %s module went into connection break state", params_.swerve_modules_name[i].c_str());
                 abnormal_state_detected = true;
             }
             else{
-                RCLCPP_INFO("Steer joint of %s module changed to normal state", params.swerve_modules_name[i].c_str());
+                RCLCPP_INFO(get_node()->get_logger(), "Steer joint of %s module changed to normal state", params_.swerve_modules_name[i].c_str());
             }
         }
         if(drive_connection_break_state_[i] != prev_drive_connection_break_state_[i]) {
             if(drive_connection_break_state_[i]) {
-                RCLCPP_ERROR("Drive joint of %s module went into connection break state", params.swerve_modules_name[i].c_str());
+                RCLCPP_ERROR(get_node()->get_logger(), "Drive joint of %s module went into connection break state", params_.swerve_modules_name[i].c_str());
                 abnormal_state_detected = true;
             }
             else{
-                RCLCPP_INFO("Drive joint of %s module changed to normal state", params.swerve_modules_name[i].c_str());
+                RCLCPP_INFO(get_node()->get_logger(), "Drive joint of %s module changed to normal state", params_.swerve_modules_name[i].c_str());
             }
         }
     }
@@ -617,7 +617,8 @@ void SwerveDriveController::handle_halt_task() {
         std::lock_guard lk(halt_tasks_mutex_);
         if(!halt_tasks_.empty()) {
             current_halt_task_.reset();
-            current_halt_task_ = halt_tasks_.pop();
+            current_halt_task_ = halt_tasks_.front();
+            halt_tasks_.pop();
             executing_halt_task_ = true;
         }
     }
