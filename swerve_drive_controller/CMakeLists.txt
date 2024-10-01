@@ -15,6 +15,7 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
     tf2_geometry_msgs
     geometry_msgs
     generate_parameter_library
+    rightbot_interfaces
 )
 
 # find dependencies

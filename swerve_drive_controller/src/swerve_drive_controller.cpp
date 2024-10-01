@@ -167,6 +167,16 @@ controller_interface::CallbackReturn SwerveDriveController::on_activate(
 
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*get_node());
 
+    halt_service_ = get_node()->create_service<rightbot_interfaces::srv::SetActuatorControlState>(
+        "base_function_halt",
+        std::bind(
+            &SwerveDriveController::halt_service_callback,
+            this,
+            std::placeholders::_1,
+            std::placeholders::_2
+        )
+    );
+
     return controller_interface::CallbackReturn::SUCCESS;
 }
 
@@ -678,6 +688,52 @@ std::shared_ptr<HaltTask> SwerveDriveController::get_new_halt_task() {
     new_halt_task->id = halt_task_id_;
     halt_task_id_++;
     return new_halt_task;
+}
+
+void SwerveDriveController::halt_service_callback(
+    rightbot_interfaces::srv::SetActuatorControlState::Request::SharedPtr req,
+    rightbot_interfaces::srv::SetActuatorControlState::Response::SharedPtr resp
+) {
+    RCLCPP_INFO(get_node()->get_logger(), "[halt_service_callback] Received set actuator control state service request");
+    
+    if(req->actuator_state.size() == 0) {
+        RCLCPP_ERROR(get_node()->get_logger(), "[halt_service_callback] No halt task specified");
+        resp->success = false;
+        resp->msg = "EMPTY_TASK";
+        return;
+    }
+
+    if(halt_cmd_to_int_map_.count(req->actuator_state[0]) == 0) {
+        RCLCPP_ERROR(get_node()->get_logger(), "[halt_service_callback] Invalid halt task specified");
+        resp->success = false;
+        resp->msg = "INVALID_TASK";
+        return;
+    }
+
+    RCLCPP_INFO(get_node()->get_logger(), "[halt_service_callback] Validity check passed");
+    auto halt_task = get_new_halt_task();
+    halt_task->type = req->actuator_state[0];
+    {
+        std::lock_guard<std::mutex> lock(halt_tasks_mutex_);
+        halt_tasks_.push(halt_task);
+    }
+
+    {
+        std::unique_lock<std::mutex> lock(halt_task->mutex);
+        halt_task->cv.wait_for(lock, std::chrono::seconds(5), [&halt_task]() { return halt_task->response_available; });
+        if(halt_task->response_available) {
+            RCLCPP_INFO(get_node()->get_logger(), "[halt_service_callback] Halt task response received");
+            RCLCPP_INFO(get_node()->get_logger(), "[halt_service_callback] Halt task successful: %s", halt_task->task_successful ? "true" : "false");
+            RCLCPP_INFO(get_node()->get_logger(), "[halt_service_callback] Halt task response: %s", halt_task->response.c_str());
+            resp->success = halt_task->task_successful;
+            resp->msg = halt_task->response;
+        }
+        else {
+            RCLCPP_ERROR(get_node()->get_logger(), "[halt_service_callback] Halt task response not received");
+            resp->success = false;
+            resp->msg = "TIMEOUT";
+        }
+    }
 }
 
 }  // namespace swerve_drive_controller

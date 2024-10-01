@@ -21,6 +21,8 @@
 
 #include "swerve_drive_controller_parameters.hpp"
 
+#include "rightbot_interfaces/srv/set_actuator_control_state.hpp"
+
 
 namespace swerve_drive_controller
 {
@@ -97,6 +99,10 @@ private:
     void handle_base_faults();
     void handle_halt_task();
     std::shared_ptr<HaltTask> get_new_halt_task();
+    void halt_service_callback(
+        rightbot_interfaces::srv::SetActuatorControlState::Request::SharedPtr req,
+        rightbot_interfaces::srv::SetActuatorControlState::Response::SharedPtr resp
+    );
 
     double epsilon_ = 1e-6;
 
@@ -159,6 +165,8 @@ private:
     std::mutex halt_tasks_mutex_;
     bool executing_halt_task_;
     int halt_task_id_;
+
+    rclcpp::Service<rightbot_interfaces::srv::SetActuatorControlState>::SharedPtr halt_service_;
 };
 
 }  // namespace swerve_drive_controller
