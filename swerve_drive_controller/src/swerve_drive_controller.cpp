@@ -205,6 +205,8 @@ controller_interface::return_type SwerveDriveController::update(const rclcpp::Ti
 
     update_base_state_variables();
     handle_odometry();
+    handle_base_faults();
+    handle_halt_task();
     handle_cmd_vel();
 
     update_loop_first_pass_ = false;
@@ -228,10 +230,10 @@ void SwerveDriveController::update_base_state_variables() {
         curr_steer_wheel_angle_[i] = loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/position").get().get_value();
         curr_drive_wheel_angle_[i] = loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/position").get().get_value();
         curr_drive_wheel_vel_[i] = loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/velocity").get().get_value();
-        steer_fault_state_[i] = static_cast<bool>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/fault").get().get_value());
-        drive_fault_state_[i] = static_cast<bool>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/fault").get().get_value());
-        steer_connection_break_state_[i] = static_cast<bool>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/connection_break").get().get_value());
-        drive_connection_break_state_[i] = static_cast<bool>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/connection_break").get().get_value());
+        steer_fault_state_[i] = static_cast<bool>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/fault").get().get_value() < epsilon_);
+        drive_fault_state_[i] = static_cast<bool>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/fault").get().get_value() < epsilon_);
+        steer_connection_break_state_[i] = static_cast<bool>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/connection_break").get().get_value() < epsilon_);
+        drive_connection_break_state_[i] = static_cast<bool>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/connection_break").get().get_value() < epsilon_);
         steer_functional_state_[i] = static_cast<int>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/functional_state").get().get_value());
         drive_functional_state_[i] = static_cast<int>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/functional_state").get().get_value());
         i++;
@@ -244,7 +246,7 @@ void SwerveDriveController::handle_base_faults() {
     for(int i = 0; i < num_modules_; i++) {
         if(steer_fault_state_[i] != prev_steer_fault_state_[i]) {
             if(steer_fault_state_[i]) {
-                RCLCPP_ERROR(get_node()->get_logger(), "Steer joint of %s module went into fault state", params_.swerve_modules_name[i].c_str());
+                RCLCPP_ERROR(get_node()->get_logger(), "Steer joint of %s module went into fault state: %f", params_.swerve_modules_name[i].c_str(), steer_fault_state_[i]? 1.0 : 0.0);
                 abnormal_state_detected = true;
             }
             else{
@@ -253,7 +255,7 @@ void SwerveDriveController::handle_base_faults() {
         }
         if(drive_fault_state_[i] != prev_drive_fault_state_[i]) {
             if(steer_fault_state_[i]) {
-                RCLCPP_ERROR(get_node()->get_logger(), "Drive joint of %s module went into fault state", params_.swerve_modules_name[i].c_str());
+                RCLCPP_ERROR(get_node()->get_logger(), "Drive joint of %s module went into fault state: %f", params_.swerve_modules_name[i].c_str(), drive_fault_state_[i]? 1.0 : 0.0);
                 abnormal_state_detected = true;
             }
             else{
@@ -265,7 +267,7 @@ void SwerveDriveController::handle_base_faults() {
     for(int i = 0; i < num_modules_; i++) {
         if(steer_connection_break_state_[i] != prev_steer_connection_break_state_[i]) {
             if(steer_connection_break_state_[i]) {
-                RCLCPP_ERROR(get_node()->get_logger(), "Steer joint of %s module went into connection break state", params_.swerve_modules_name[i].c_str());
+                RCLCPP_ERROR(get_node()->get_logger(), "Steer joint of %s module went into connection break state: %f", params_.swerve_modules_name[i].c_str(), steer_connection_break_state_[i]? 1.0 : 0.0);
                 abnormal_state_detected = true;
             }
             else{
@@ -274,7 +276,7 @@ void SwerveDriveController::handle_base_faults() {
         }
         if(drive_connection_break_state_[i] != prev_drive_connection_break_state_[i]) {
             if(drive_connection_break_state_[i]) {
-                RCLCPP_ERROR(get_node()->get_logger(), "Drive joint of %s module went into connection break state", params_.swerve_modules_name[i].c_str());
+                RCLCPP_ERROR(get_node()->get_logger(), "Drive joint of %s module went into connection break state: %f", params_.swerve_modules_name[i].c_str(), drive_connection_break_state_[i]? 1.0 : 0.0);
                 abnormal_state_detected = true;
             }
             else{
@@ -298,6 +300,11 @@ void SwerveDriveController::handle_base_faults() {
         RCLCPP_INFO(get_node()->get_logger(), "Setting bot state as normal");
         base_is_operational_ = true;
     }
+
+    prev_steer_fault_state_ = steer_fault_state_;
+    prev_drive_fault_state_ = drive_fault_state_;
+    prev_steer_connection_break_state_ = steer_connection_break_state_;
+    prev_drive_connection_break_state_ = drive_connection_break_state_;
 }
 
 void SwerveDriveController::handle_odometry() {

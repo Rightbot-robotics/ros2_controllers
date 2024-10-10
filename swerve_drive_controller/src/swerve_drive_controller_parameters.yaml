@@ -82,7 +82,7 @@ swerve_drive_controller:
   }
   max_drive_acceleration: {
     type: double,
-    default_value: 0.05,
+    default_value: 3.14,
     description: "Maximum acceleration of the drive joint in rad/s^2"
   }
   

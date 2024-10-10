@@ -42,6 +42,9 @@ bool get_loaned_interfaces(
                 found_current_interface = true;
             }
         }
+        if(!found_current_interface) {
+            RCLCPP_ERROR(rclcpp::get_logger("swerve_drive_controller"), "Failed to find interface: %s", interface_name.c_str());
+        }
         all_interface_found = all_interface_found && found_current_interface;
     }
     return all_interface_found;
