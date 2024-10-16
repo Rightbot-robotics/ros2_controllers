@@ -264,26 +264,26 @@ void SwerveDriveController::handle_base_faults() {
         }
     }
 
-    for(int i = 0; i < num_modules_; i++) {
-        if(steer_connection_break_state_[i] != prev_steer_connection_break_state_[i]) {
-            if(steer_connection_break_state_[i]) {
-                RCLCPP_ERROR(get_node()->get_logger(), "Steer joint of %s module went into connection break state: %f", params_.swerve_modules_name[i].c_str(), steer_connection_break_state_[i]? 1.0 : 0.0);
-                abnormal_state_detected = true;
-            }
-            else{
-                RCLCPP_INFO(get_node()->get_logger(), "Steer joint of %s module changed to normal state", params_.swerve_modules_name[i].c_str());
-            }
-        }
-        if(drive_connection_break_state_[i] != prev_drive_connection_break_state_[i]) {
-            if(drive_connection_break_state_[i]) {
-                RCLCPP_ERROR(get_node()->get_logger(), "Drive joint of %s module went into connection break state: %f", params_.swerve_modules_name[i].c_str(), drive_connection_break_state_[i]? 1.0 : 0.0);
-                abnormal_state_detected = true;
-            }
-            else{
-                RCLCPP_INFO(get_node()->get_logger(), "Drive joint of %s module changed to normal state", params_.swerve_modules_name[i].c_str());
-            }
-        }
-    }
+    // for(int i = 0; i < num_modules_; i++) {
+    //     if(steer_connection_break_state_[i] != prev_steer_connection_break_state_[i]) {
+    //         if(steer_connection_break_state_[i]) {
+    //             RCLCPP_ERROR(get_node()->get_logger(), "Steer joint of %s module went into connection break state: %f", params_.swerve_modules_name[i].c_str(), steer_connection_break_state_[i]? 1.0 : 0.0);
+    //             abnormal_state_detected = true;
+    //         }
+    //         else{
+    //             RCLCPP_INFO(get_node()->get_logger(), "Steer joint of %s module changed to normal state", params_.swerve_modules_name[i].c_str());
+    //         }
+    //     }
+    //     if(drive_connection_break_state_[i] != prev_drive_connection_break_state_[i]) {
+    //         if(drive_connection_break_state_[i]) {
+    //             RCLCPP_ERROR(get_node()->get_logger(), "Drive joint of %s module went into connection break state: %f", params_.swerve_modules_name[i].c_str(), drive_connection_break_state_[i]? 1.0 : 0.0);
+    //             abnormal_state_detected = true;
+    //         }
+    //         else{
+    //             RCLCPP_INFO(get_node()->get_logger(), "Drive joint of %s module changed to normal state", params_.swerve_modules_name[i].c_str());
+    //         }
+    //     }
+    // }
 
     if(abnormal_state_detected && base_is_operational_) {
         RCLCPP_INFO(get_node()->get_logger(), "Sending hard stop to all motors");

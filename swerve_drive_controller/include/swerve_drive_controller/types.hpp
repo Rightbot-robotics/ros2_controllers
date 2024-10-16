@@ -11,7 +11,7 @@ public:
     double linear_x;
     double linear_y;
     double angular_z;
-    double epsilon = 1e-6;
+    double epsilon = 1e-2;
 
     Velocity();
     void set_speed(double linear_x, double linear_y, double angular_z);

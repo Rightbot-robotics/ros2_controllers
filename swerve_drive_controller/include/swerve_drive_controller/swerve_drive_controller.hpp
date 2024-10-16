@@ -107,7 +107,7 @@ private:
         rightbot_interfaces::srv::SetActuatorControlState::Response::SharedPtr resp
     );
 
-    double epsilon_ = 1e-6;
+    double epsilon_ = 1e-4;
 
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
