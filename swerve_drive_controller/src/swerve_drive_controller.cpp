@@ -243,26 +243,26 @@ void SwerveDriveController::update_base_state_variables() {
 void SwerveDriveController::handle_base_faults() {
     bool abnormal_state_detected = false;
     
-    for(int i = 0; i < num_modules_; i++) {
-        if(steer_fault_state_[i] != prev_steer_fault_state_[i]) {
-            if(steer_fault_state_[i]) {
-                RCLCPP_ERROR(get_node()->get_logger(), "Steer joint of %s module went into fault state: %f", params_.swerve_modules_name[i].c_str(), steer_fault_state_[i]? 1.0 : 0.0);
-                abnormal_state_detected = true;
-            }
-            else{
-                RCLCPP_INFO(get_node()->get_logger(), "Steer joint of %s module changed to normal state", params_.swerve_modules_name[i].c_str());
-            }
-        }
-        if(drive_fault_state_[i] != prev_drive_fault_state_[i]) {
-            if(steer_fault_state_[i]) {
-                RCLCPP_ERROR(get_node()->get_logger(), "Drive joint of %s module went into fault state: %f", params_.swerve_modules_name[i].c_str(), drive_fault_state_[i]? 1.0 : 0.0);
-                abnormal_state_detected = true;
-            }
-            else{
-                RCLCPP_INFO(get_node()->get_logger(), "Drive joint of %s module changed to normal state", params_.swerve_modules_name[i].c_str());
-            }
-        }
-    }
+    // for(int i = 0; i < num_modules_; i++) {
+    //     if(steer_fault_state_[i] != prev_steer_fault_state_[i]) {
+    //         if(steer_fault_state_[i]) {
+    //             RCLCPP_ERROR(get_node()->get_logger(), "Steer joint of %s module went into fault state: %f", params_.swerve_modules_name[i].c_str(), steer_fault_state_[i]? 1.0 : 0.0);
+    //             abnormal_state_detected = true;
+    //         }
+    //         else{
+    //             RCLCPP_INFO(get_node()->get_logger(), "Steer joint of %s module changed to normal state", params_.swerve_modules_name[i].c_str());
+    //         }
+    //     }
+    //     if(drive_fault_state_[i] != prev_drive_fault_state_[i]) {
+    //         if(steer_fault_state_[i]) {
+    //             RCLCPP_ERROR(get_node()->get_logger(), "Drive joint of %s module went into fault state: %f", params_.swerve_modules_name[i].c_str(), drive_fault_state_[i]? 1.0 : 0.0);
+    //             abnormal_state_detected = true;
+    //         }
+    //         else{
+    //             RCLCPP_INFO(get_node()->get_logger(), "Drive joint of %s module changed to normal state", params_.swerve_modules_name[i].c_str());
+    //         }
+    //     }
+    // }
 
     // for(int i = 0; i < num_modules_; i++) {
     //     if(steer_connection_break_state_[i] != prev_steer_connection_break_state_[i]) {
@@ -439,19 +439,49 @@ void SwerveDriveController::apply_kinematics_limits(Velocity& vel_in) {
         RCLCPP_WARN(get_node()->get_logger(), "Angular z velocity limited to %f", vel_in.angular_z);
     }
 
-    double commanded_acceleration;
+    double accel_x, accel_y, accel_w;
+    double time_x, time_y, time_w, max_time = 0.0;
 
-    commanded_acceleration = (vel_in.linear_x - prev_target_velocity_.linear_x) / loop_period_.count();
-    if(std::abs(commanded_acceleration) > params_.linear_accel_x) {
-        vel_in.linear_x = prev_target_velocity_.linear_x + std::copysign(params_.linear_accel_x, commanded_acceleration) * loop_period_.count();
+    accel_x = (vel_in.linear_x - prev_target_velocity_.linear_x) / loop_period_.count();
+    if(std::abs(accel_x) > params_.linear_accel_x) {
+        accel_x = std::copysign(params_.linear_accel_x, accel_x);
     }
-    commanded_acceleration = (vel_in.linear_y - prev_target_velocity_.linear_y) / loop_period_.count();
-    if(std::abs(commanded_acceleration) > params_.linear_accel_y) {
-        vel_in.linear_y = prev_target_velocity_.linear_y + std::copysign(params_.linear_accel_y, commanded_acceleration) * loop_period_.count();
+    if(std::abs(accel_x) < 1e-6) {
+        time_x = 0.0;
     }
-    commanded_acceleration = (vel_in.angular_z - prev_target_velocity_.angular_z) / loop_period_.count();
-    if(std::abs(commanded_acceleration) > params_.angular_accel_z) {
-        vel_in.angular_z = prev_target_velocity_.angular_z + std::copysign(params_.angular_accel_z, commanded_acceleration) * loop_period_.count();
+    else {
+        time_x = std::abs((vel_in.linear_x - prev_target_velocity_.linear_x) / accel_x);
+    }
+    max_time = std::max(time_x, max_time);
+
+    accel_y = (vel_in.linear_y - prev_target_velocity_.linear_y) / loop_period_.count();
+    if(std::abs(accel_y) > params_.linear_accel_y) {
+        accel_y = std::copysign(params_.linear_accel_y, accel_y);
+    }
+    if(std::abs(accel_y) < 1e-6) {
+        time_y = 0.0;
+    }
+    else {
+        time_y = std::abs((vel_in.linear_y - prev_target_velocity_.linear_y) / accel_y);
+    }
+    max_time = std::max(time_y, max_time);
+
+    accel_w = (vel_in.angular_z - prev_target_velocity_.angular_z) / loop_period_.count();
+    if(std::abs(accel_w) > params_.angular_accel_z) {
+        accel_w = std::copysign(params_.angular_accel_z, accel_w);
+    }
+    if(std::abs(accel_w) < 1e-6) {
+        time_w = 0.0;
+    }
+    else {
+        time_w = std::abs((vel_in.angular_z - prev_target_velocity_.angular_z) / accel_w);
+    }
+    max_time = std::max(time_w, max_time);
+
+    if(max_time > 1e-6) {
+        vel_in.linear_x = prev_target_velocity_.linear_x + (time_x / max_time) * accel_x * loop_period_.count();
+        vel_in.linear_y = prev_target_velocity_.linear_y + (time_y / max_time) * accel_y * loop_period_.count();
+        vel_in.angular_z = prev_target_velocity_.angular_z + (time_w / max_time) * accel_w * loop_period_.count();
     }
 }
 
