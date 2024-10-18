@@ -230,10 +230,10 @@ void SwerveDriveController::update_base_state_variables() {
         curr_steer_wheel_angle_[i] = loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/position").get().get_value();
         curr_drive_wheel_angle_[i] = loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/position").get().get_value();
         curr_drive_wheel_vel_[i] = loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/velocity").get().get_value();
-        steer_fault_state_[i] = static_cast<bool>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/fault").get().get_value() < epsilon_);
-        drive_fault_state_[i] = static_cast<bool>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/fault").get().get_value() < epsilon_);
-        steer_connection_break_state_[i] = static_cast<bool>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/connection_break").get().get_value() < epsilon_);
-        drive_connection_break_state_[i] = static_cast<bool>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/connection_break").get().get_value() < epsilon_);
+        steer_fault_state_[i] = static_cast<bool>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/fault").get().get_value() > epsilon_);
+        drive_fault_state_[i] = static_cast<bool>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/fault").get().get_value() > epsilon_);
+        steer_connection_break_state_[i] = static_cast<bool>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/connection_break").get().get_value() > epsilon_);
+        drive_connection_break_state_[i] = static_cast<bool>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/connection_break").get().get_value() > epsilon_);
         steer_functional_state_[i] = static_cast<int>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).steer_joint_name + "/functional_state").get().get_value());
         drive_functional_state_[i] = static_cast<int>(loaned_state_interfaces_.at(params_.modules_info.swerve_modules_name_map.at(module_name).drive_joint_name + "/functional_state").get().get_value());
         i++;
