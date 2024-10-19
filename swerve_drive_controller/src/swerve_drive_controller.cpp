@@ -391,6 +391,10 @@ void SwerveDriveController::handle_cmd_vel() {
         cmd_vel_expired_ = false;
     }
 
+    if(!base_is_operational_) {
+        target_velocity_.set_speed(0.0, 0.0, 0.0);
+    }
+
     apply_kinematics_limits(target_velocity_);
     prev_target_velocity_ = target_velocity_;
 
