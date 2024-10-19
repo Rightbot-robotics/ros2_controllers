@@ -156,8 +156,8 @@ private:
     std::vector<bool> prev_steer_fault_state_, prev_steer_connection_break_state_;
     std::vector<bool> drive_fault_state_, drive_connection_break_state_;
     std::vector<bool> prev_drive_fault_state_, prev_drive_connection_break_state_;
-    std::vector<int> steer_functional_state_;
-    std::vector<int> drive_functional_state_;
+    std::vector<int> steer_functional_state_, prev_steer_functional_state_;
+    std::vector<int> drive_functional_state_, prev_drive_functional_state_;
     bool base_is_operational_;
 
     std::map<std::string, int> halt_cmd_to_int_map_ = {

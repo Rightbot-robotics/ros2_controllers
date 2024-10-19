@@ -59,7 +59,9 @@ controller_interface::CallbackReturn SwerveDriveController::on_init() {
     base_is_operational_ = true;
 
     steer_functional_state_ = std::vector<int>(num_modules_, 0);
+    prev_steer_functional_state_ = std::vector<int>(num_modules_, 0);
     drive_functional_state_ = std::vector<int>(num_modules_, 0);
+    prev_drive_functional_state_ = std::vector<int>(num_modules_, 0);
 
     executing_halt_task_ = false;
     halt_task_id_ = 0;
@@ -250,7 +252,7 @@ void SwerveDriveController::handle_base_faults() {
                 abnormal_state_detected = true;
             }
             else{
-                RCLCPP_INFO(get_node()->get_logger(), "Steer joint of %s module changed to normal state", params_.swerve_modules_name[i].c_str());
+                RCLCPP_INFO(get_node()->get_logger(), "Steer joint of %s module changed to no fault state", params_.swerve_modules_name[i].c_str());
             }
         }
         if(drive_fault_state_[i] != prev_drive_fault_state_[i]) {
@@ -259,7 +261,7 @@ void SwerveDriveController::handle_base_faults() {
                 abnormal_state_detected = true;
             }
             else{
-                RCLCPP_INFO(get_node()->get_logger(), "Drive joint of %s module changed to normal state", params_.swerve_modules_name[i].c_str());
+                RCLCPP_INFO(get_node()->get_logger(), "Drive joint of %s module changed to no fault state", params_.swerve_modules_name[i].c_str());
             }
         }
     }
@@ -271,7 +273,7 @@ void SwerveDriveController::handle_base_faults() {
                 abnormal_state_detected = true;
             }
             else{
-                RCLCPP_INFO(get_node()->get_logger(), "Steer joint of %s module changed to normal state", params_.swerve_modules_name[i].c_str());
+                RCLCPP_INFO(get_node()->get_logger(), "Steer joint of %s module changed to no connection break state", params_.swerve_modules_name[i].c_str());
             }
         }
         if(drive_connection_break_state_[i] != prev_drive_connection_break_state_[i]) {
@@ -280,7 +282,28 @@ void SwerveDriveController::handle_base_faults() {
                 abnormal_state_detected = true;
             }
             else{
-                RCLCPP_INFO(get_node()->get_logger(), "Drive joint of %s module changed to normal state", params_.swerve_modules_name[i].c_str());
+                RCLCPP_INFO(get_node()->get_logger(), "Drive joint of %s module changed to no connection break state", params_.swerve_modules_name[i].c_str());
+            }
+        }
+    }
+
+    for(int i = 0; i < num_modules_; i++) {
+        if(steer_functional_state_[i] != prev_steer_functional_state_[i]) {
+            if(steer_functional_state_[i] != halt_cmd_to_int_map_["OPERATIONAL"]) {
+                RCLCPP_ERROR(get_node()->get_logger(), "Steer joint of %s module went into non-operational functional state: %f", params_.swerve_modules_name[i].c_str(), steer_functional_state_[i]);
+                abnormal_state_detected = true;
+            }
+            else{
+                RCLCPP_INFO(get_node()->get_logger(), "Steer joint of %s module changed to operational functional state", params_.swerve_modules_name[i].c_str());
+            }
+        }
+        if(drive_functional_state_[i] != prev_drive_functional_state_[i]) {
+            if(drive_functional_state_[i] != halt_cmd_to_int_map_["OPERATIONAL"]) {
+                RCLCPP_ERROR(get_node()->get_logger(), "Drive joint of %s module went into non-operational functional state: %f", params_.swerve_modules_name[i].c_str(), drive_functional_state_[i]);
+                abnormal_state_detected = true;
+            }
+            else{
+                RCLCPP_INFO(get_node()->get_logger(), "Drive joint of %s module changed to operational functional state", params_.swerve_modules_name[i].c_str());
             }
         }
     }
@@ -305,6 +328,8 @@ void SwerveDriveController::handle_base_faults() {
     prev_drive_fault_state_ = drive_fault_state_;
     prev_steer_connection_break_state_ = steer_connection_break_state_;
     prev_drive_connection_break_state_ = drive_connection_break_state_;
+    prev_steer_functional_state_ = steer_functional_state_;
+    prev_drive_functional_state_ = drive_functional_state_;
 }
 
 void SwerveDriveController::handle_odometry() {
