@@ -59,6 +59,8 @@ struct HaltTask {
     std::string response = "";
     std::mutex mutex;
     std::condition_variable cv;
+    std::chrono::time_point<std::chrono::system_clock> task_start_time;
+    double time_elapsed = 0.0;
 };
 
 class SwerveDriveController

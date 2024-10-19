@@ -710,13 +710,28 @@ void SwerveDriveController::handle_halt_task() {
         }
     }
 
+    bool halt_task_timed_out = false;
+    if(!halt_task_complete) {
+        current_halt_task_->time_elapsed = std::chrono::duration<double>(std::chrono::system_clock::now() - current_halt_task_->task_start_time).count();
+        if(current_halt_task_->time_elapsed > params_.halt_timeout) {
+            halt_task_complete = true;
+            halt_task_timed_out = true;
+        }
+    }
+
     if(halt_task_complete) {
         RCLCPP_INFO(get_node()->get_logger(), "Halt task complete, task id: %d, task type: %s", current_halt_task_->id, current_halt_task_->type.c_str());
-        {
+        if(!halt_task_timed_out) {
             std::lock_guard lk(current_halt_task_->mutex);
             current_halt_task_->response_available = true;
             current_halt_task_->task_successful = true;
             current_halt_task_->response = "SUCCESSFUL";
+        }
+        else {
+            std::lock_guard lk(current_halt_task_->mutex);
+            current_halt_task_->response_available = true;
+            current_halt_task_->task_successful = false;
+            current_halt_task_->response = "TIMED_OUT";
         }
         current_halt_task_->cv.notify_all();
         current_halt_task_.reset();
@@ -761,7 +776,7 @@ void SwerveDriveController::halt_service_callback(
 
     {
         std::unique_lock<std::mutex> lock(halt_task->mutex);
-        halt_task->cv.wait_for(lock, std::chrono::seconds(5), [&halt_task]() { return halt_task->response_available; });
+        halt_task->cv.wait_for(lock, std::chrono::seconds(halt_task_timeout_ * 1.2), [&halt_task]() { return halt_task->response_available; });
         if(halt_task->response_available) {
             RCLCPP_INFO(get_node()->get_logger(), "[halt_service_callback] Halt task response received");
             RCLCPP_INFO(get_node()->get_logger(), "[halt_service_callback] Halt task successful: %s", halt_task->task_successful ? "true" : "false");

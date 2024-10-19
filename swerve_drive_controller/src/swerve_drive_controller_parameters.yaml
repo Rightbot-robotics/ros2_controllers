@@ -32,32 +32,26 @@ swerve_drive_controller:
   }
   max_linear_vel_x: {
     type: double,
-    default_value: 0.15,
     description: "Maximum linear velocity in x direction in m/s"
   }
   max_linear_vel_y: {
     type: double,
-    default_value: 0.15,
     description: "Maximum linear velocity in y direction in m/s"
   }
   max_angular_vel_z: {
     type: double,
-    default_value: 0.05,
     description: "Maximum angular velocity in z direction in rad/s"
   }
   linear_accel_x: {
     type: double,
-    default_value: 0.15,
     description: "Linear acceleration in x direction in m/s^2"
   }
   linear_accel_y: {
     type: double,
-    default_value: 0.15,
     description: "Linear acceleration in y direction in m/s^2"
   }
   angular_accel_z: {
     type: double,
-    default_value: 0.05,
     description: "Angular acceleration in z direction in rad/s^2"
   }
   max_loop_period: {
@@ -82,8 +76,12 @@ swerve_drive_controller:
   }
   max_drive_acceleration: {
     type: double,
-    default_value: 3.14,
     description: "Maximum acceleration of the drive joint in rad/s^2"
+  }
+  halt_task_timeout: {
+    type: double,
+    default_value: 5.0,
+    description: "Time in seconds to wait for halt task to finish"
   }
   
   swerve_modules_name: {
