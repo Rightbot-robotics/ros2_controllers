@@ -805,7 +805,7 @@ void SwerveDriveController::halt_service_callback(
 
     {
         std::unique_lock<std::mutex> lock(halt_task->mutex);
-        halt_task->cv.wait_for(lock, std::chrono::seconds(params_.halt_task_timeout * 1.2), [&halt_task]() { return halt_task->response_available; });
+        halt_task->cv.wait_for(lock, std::chrono::duration<double>(params_.halt_task_timeout * 1.2), [&halt_task]() { return halt_task->response_available; });
         if(halt_task->response_available) {
             RCLCPP_INFO(get_node()->get_logger(), "[halt_service_callback] Halt task response received");
             RCLCPP_INFO(get_node()->get_logger(), "[halt_service_callback] Halt task successful: %s", halt_task->task_successful ? "true" : "false");
