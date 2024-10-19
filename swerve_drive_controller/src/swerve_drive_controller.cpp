@@ -290,7 +290,7 @@ void SwerveDriveController::handle_base_faults() {
     for(int i = 0; i < num_modules_; i++) {
         if(steer_functional_state_[i] != prev_steer_functional_state_[i]) {
             if(steer_functional_state_[i] != halt_cmd_to_int_map_["OPERATIONAL"]) {
-                RCLCPP_ERROR(get_node()->get_logger(), "Steer joint of %s module went into non-operational functional state: %f", params_.swerve_modules_name[i].c_str(), steer_functional_state_[i]);
+                RCLCPP_ERROR(get_node()->get_logger(), "Steer joint of %s module went into non-operational functional state: %d", params_.swerve_modules_name[i].c_str(), steer_functional_state_[i]);
                 abnormal_state_detected = true;
             }
             else{
@@ -299,7 +299,7 @@ void SwerveDriveController::handle_base_faults() {
         }
         if(drive_functional_state_[i] != prev_drive_functional_state_[i]) {
             if(drive_functional_state_[i] != halt_cmd_to_int_map_["OPERATIONAL"]) {
-                RCLCPP_ERROR(get_node()->get_logger(), "Drive joint of %s module went into non-operational functional state: %f", params_.swerve_modules_name[i].c_str(), drive_functional_state_[i]);
+                RCLCPP_ERROR(get_node()->get_logger(), "Drive joint of %s module went into non-operational functional state: %d", params_.swerve_modules_name[i].c_str(), drive_functional_state_[i]);
                 abnormal_state_detected = true;
             }
             else{
